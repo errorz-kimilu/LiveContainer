@@ -3,6 +3,9 @@ Run iOS app without actually installing it!
 - Allows you to install unlimited apps (10 apps limit of free developer account do not apply here!), have multiple versions of an app installed and multiple data containers.
 - When JIT is available, codesign is entirely bypassed, no need to sign your apps before installing. Otherwise, app will be signed with the same certificate used by LiveContainer.
 
+>[!Note]
+It’s recommended to follow the following steps to set up JIT-Less mode for using LiveContainer without JIT. If you encounter any issues, please review #265 first before reporting them.
+
 ## Compatibility
 Unfortunately, not all apps work in LiveContainer, so we have a [compatibility list](https://github.com/khanhduytran0/LiveContainer/labels/compatibility) to tell if there is apps that have issues. If they aren't on this list, then it's likely going run. However, if it doesn't work, please make an [issue](https://github.com/khanhduytran0/LiveContainer/issues/new/choose) about it.
 
@@ -138,6 +141,9 @@ The [original thought was 256](https://github.com/hugeBlack/LiveContainer/blob/2
 - Only one guest app can run at a time. This is much more like 3 apps limit where you have to disable an app to run another (switching between app in LiveContainer is instant).
 - Remote push notification might not work. ~~If you have a paid developer account then you don't even have to use LiveContainer~~
 - Querying custom URL schemes might not work(?)
+
+## Livecontainer Nightly
+To download nightly versions of Livecontainer (beta versions), visit this repo which contains expiremental features that have a high chance of entering a stable release. (https://github.com/hugeBlack/LiveContainer)
 
 ## TODO
 - Use ChOma instead of custom MachO parser
