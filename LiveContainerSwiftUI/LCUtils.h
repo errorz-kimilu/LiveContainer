@@ -18,6 +18,7 @@ void LCPatchExecSlice(const char *path, struct mach_header_64 *header);
 void LCPatchLibrary(const char *path, struct mach_header_64 *header);
 void LCChangeExecUUID(struct mach_header_64 *header);
 void LCPatchAltStore(const char *path, struct mach_header_64 *header);
+NSString* getLCEntitlementXML(void);
 
 @interface PKZipArchiver : NSObject
 
@@ -33,7 +34,6 @@ void LCPatchAltStore(const char *path, struct mach_header_64 *header);
 + (NSData *)certificateData;
 + (NSString *)certificatePassword;
 
-+ (BOOL)askForJIT;
 + (BOOL)launchToGuestApp;
 + (BOOL)launchToGuestAppWithURL:(NSURL *)url;
 

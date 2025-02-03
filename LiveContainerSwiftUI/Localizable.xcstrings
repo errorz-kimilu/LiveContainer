@@ -394,7 +394,7 @@
         "zh_CN" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将App转换为共享App以在LiveContainer中使用"
+            "value" : "将App转换为共享App以在LiveContainer2中使用"
           }
         }
       }
@@ -501,6 +501,40 @@
         }
       }
     },
+    "lc.appList.installFromIpa" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install IPA File"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过IPA文件安装"
+          }
+        }
+      }
+    },
+    "lc.appList.installFromUrl" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install from URL"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过链接安装"
+          }
+        }
+      }
+    },
     "lc.appList.installReplaceTip" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -531,6 +565,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "点击加号按钮安装App"
+          }
+        }
+      }
+    },
+    "lc.appList.installUrlInputTip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please Input Install URL"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请输入安装链接"
           }
         }
       }
@@ -633,6 +684,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App签名成功，但以下文件签名失败。App有可能可以正常运行。"
+          }
+        }
+      }
+    },
+    "lc.appList.urlFileIsNotIpaError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please provide an IPA file to install."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请出提供一个IPA文件用于安装。"
           }
         }
       }
@@ -1266,6 +1334,23 @@
         }
       }
     },
+    "lc.common.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        }
+      }
+    },
     "lc.common.copy" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1279,6 +1364,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "复制"
+          }
+        }
+      }
+    },
+    "lc.common.correct" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正确"
           }
         }
       }
@@ -1929,6 +2031,23 @@
         }
       }
     },
+    "lc.download.downloading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载中"
+          }
+        }
+      }
+    },
     "lc.guestTweak.appSwitchTip %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2014,6 +2133,23 @@
         }
       }
     },
+    "lc.guestTweak.restartToInstall" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please restart LiveContainer to install apps."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请重启LiveContainer以安装App。"
+          }
+        }
+      }
+    },
     "lc.helpView.text1" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2065,6 +2201,23 @@
         }
       }
     },
+    "lc.jielessDiag.entitlement" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entitlement File"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entitlement 文件"
+          }
+        }
+      }
+    },
     "lc.jitlessDiag.appGroupAccessible" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2112,6 +2265,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "包名"
+          }
+        }
+      }
+    },
+    "lc.jitlessDiag.bundleIdExpected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expected Bundle Identifier"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期望包名"
           }
         }
       }
@@ -2214,6 +2384,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "安装方式"
+          }
+        }
+      }
+    },
+    "lc.jitlessDiag.teamId" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Team ID"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "团队名"
           }
         }
       }
@@ -2769,6 +2956,23 @@
         }
       }
     },
+    "lc.settings.jitEnabler" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JIT Enabler"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JIT启用工具"
+          }
+        }
+      }
+    },
     "lc.settings.jitLess" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2972,6 +3176,23 @@
         }
       }
     },
+    "lc.settings.multiLCArchiveSuccess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The packed second LiveContainer has been saved to LiveContainer's document folder. Please install it manually."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打包的第二个LiveContainer ipa已经保存到LiveContainer的“文件”文件夹，请将其手动安装。"
+          }
+        }
+      }
+    },
     "lc.settings.multiLCDesc" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3002,6 +3223,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "安装第二个LiveContainer"
+          }
+        }
+      }
+    },
+    "lc.settings.multiLCInstallAlertDesc %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ will be opened to install the second LiveContainer, Continue?\n\nSelect “Archive Only” if you want to do some customization and install manually."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "即将跳转到%@来安装第二个LiveContainer，要继续吗？\n\n可选择“仅打包”来进行自定义并手动安装。"
           }
         }
       }
@@ -3114,13 +3352,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Patched %@ has been saved to LiveContainer's document folder. Please install it with the %@ that LiveContainer is installed with."
+            "value" : "Patched %@ ipa has been saved to LiveContainer's document folder. Please install it with the %@ that LiveContainer is installed with."
           }
         },
         "zh_CN" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打包的%@已经保存到LiveContainer的“文件”文件夹，请将其手动安装到安装了LiveContainer的那个%@中。"
+            "value" : "打包的%@ ipa已经保存到LiveContainer的“文件”文件夹，请将其手动安装到安装了LiveContainer的那个%@中。"
           }
         }
       }
@@ -3284,7 +3522,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "By default, LiveContainer asks you how to open an URL. Enable this automatically open URL in current app."
+            "value" : "By default, LiveContainer asks you how to open an URL. Enable this to automatically open URL in current app."
           }
         },
         "zh_CN" : {

@@ -14,6 +14,11 @@ enum PatchChoice {
     case archiveOnly
 }
 
+enum JITEnablerType : Int {
+    case SideJITServer = 0
+    case JITStreamerEB = 1
+}
+
 struct LCSettingsView: View {
     @State var errorShow = false
     @State var errorInfo = ""
@@ -27,6 +32,7 @@ struct LCSettingsView: View {
     
     @StateObject private var keyChainRemovalAlert = YesNoHelper()
     @StateObject private var patchAltStoreAlert = AlertHelper<PatchChoice>()
+    @StateObject private var installLC2Alert = AlertHelper<PatchChoice>()
     @State private var isAltStorePatched = false
     
     @StateObject private var certificateImportAlert = YesNoHelper()
@@ -45,6 +51,7 @@ struct LCSettingsView: View {
     
     @State var sideJITServerAddress : String
     @State var deviceUDID: String
+    @State var JITEnabler: JITEnablerType = .SideJITServer
     
     @State var isSideStore : Bool = true
     
@@ -75,7 +82,7 @@ struct LCSettingsView: View {
         
         DataManager.shared.model.certificateImported = UserDefaults.standard.bool(forKey: "LCCertificateImported")
         if !DataManager.shared.model.certificateImported {
-            // Only ZSign is available to ADP / Enterprise certs
+            // Only ZSign is available to ADP certs
             _defaultSigner = State(initialValue: Signer(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCDefaultSigner"))!)
         }
         
@@ -92,6 +99,8 @@ struct LCSettingsView: View {
         } else {
             _deviceUDID = State(initialValue: "")
         }
+        _JITEnabler = State(initialValue: JITEnablerType(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCJITEnablerType"))!)
+        
         _strictHiding = State(initialValue: LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding"))
 
     }
@@ -157,7 +166,7 @@ struct LCSettingsView: View {
 
                 Section{
                     Button {
-                        installAnotherLC()
+                        Task { await installAnotherLC() }
                     } label: {
                         if sharedModel.multiLCStatus == 0 {
                             Text("lc.settings.multiLCInstall".loc)
@@ -187,15 +196,24 @@ struct LCSettingsView: View {
                     HStack {
                         Text("lc.settings.JitAddress".loc)
                         Spacer()
-                        TextField("http://x.x.x.x:8080", text: $sideJITServerAddress)
+                        TextField(JITEnabler == .SideJITServer ? "http://x.x.x.x:8080" : "http://[fd00::]:9172", text: $sideJITServerAddress)
                             .multilineTextAlignment(.trailing)
                     }
-                    HStack {
-                        Text("lc.settings.JitUDID".loc)
-                        Spacer()
-                        TextField("", text: $deviceUDID)
-                            .multilineTextAlignment(.trailing)
+                    if JITEnabler == .SideJITServer {
+                        HStack {
+                            Text("lc.settings.JitUDID".loc)
+                            Spacer()
+                            TextField("", text: $deviceUDID)
+                                .multilineTextAlignment(.trailing)
+                        }
                     }
+                    Picker(selection: $JITEnabler) {
+                        Text("SideJITServer/JITStreamer 2.0").tag(JITEnablerType.SideJITServer)
+                        Text("JitStreamer-EB").tag(JITEnablerType.JITStreamerEB)
+                    } label: {
+                        Text("lc.settings.jitEnabler".loc)
+                    }
+
                 } header: {
                     Text("JIT")
                 } footer: {
@@ -293,7 +311,12 @@ struct LCSettingsView: View {
                         Button {
                             export()
                         } label: {
-                            Text("export cert")
+                            Text("Export Cert")
+                        }
+                        Button {
+                            exportMainExecutable()
+                        } label: {
+                            Text("Export Main Executable")
                         }
                     } header: {
                         Text("Developer Settings")
@@ -307,6 +330,12 @@ struct LCSettingsView: View {
                         Image("GitHub")
                         Button("khanhduytran0/LiveContainer") {
                             openGitHub()
+                        }
+                    }
+                    HStack {
+                        Image("GitHub")
+                        Button("hugeBlack/LiveContainer") {
+                            openGitHub2()
                         }
                     }
                     HStack {
@@ -385,7 +414,7 @@ struct LCSettingsView: View {
                 Button(role: .destructive) {
                     patchAltStoreAlert.close(result: .autoPath)
                 } label: {
-                    Text("lc.common.ok".loc)
+                    Text("lc.common.continue".loc)
                 }
                 if(isSideStore) {
                     Button {
@@ -406,6 +435,25 @@ struct LCSettingsView: View {
                     Text("lc.settings.patchStoreDesc %@ %@ %@ %@".localizeWithFormat(storeName, storeName, storeName, storeName))
                 }
 
+            }
+            .alert("lc.settings.multiLCInstall".loc, isPresented: $installLC2Alert.show) {
+                Button {
+                    installLC2Alert.close(result: .autoPath)
+                } label: {
+                    Text("lc.common.continue".loc)
+                }
+                if(isSideStore) {
+                    Button {
+                        installLC2Alert.close(result: .archiveOnly)
+                    } label: {
+                        Text("lc.settings.patchStoreArchiveOnly".loc)
+                    }
+                }
+                Button("lc.common.cancel".loc, role: .cancel) {
+                    patchAltStoreAlert.close(result: .cancel)
+                }
+            } message: {
+                Text("lc.settings.multiLCInstallAlertDesc %@".localizeWithFormat(storeName))
             }
             .alert("lc.settings.importCertificate".loc, isPresented: $certificateImportAlert.show) {
                 Button {
@@ -482,6 +530,9 @@ struct LCSettingsView: View {
             .onChange(of: sideJITServerAddress) { newValue in
                 saveAppGroupItem(key: "LCSideJITServerAddress", val: newValue)
             }
+            .onChange(of: JITEnabler) { newValue in
+                saveAppGroupItem(key: "LCJITEnablerType", val: newValue.rawValue)
+            }
             .onChange(of: defaultSigner) { newValue in
                 saveAppGroupItem(key: "LCDefaultSigner", val: newValue.rawValue)
             }
@@ -498,21 +549,28 @@ struct LCSettingsView: View {
         LCUtils.appGroupUserDefault.setValue(val, forKey: key)
     }
     
-    func installAnotherLC() {
+    func installAnotherLC() async {
         if !LCUtils.isAppGroupAltStoreLike() {
             errorInfo = "lc.settings.unsupportedInstallMethod".loc
             errorShow = true
             return;
         }
-        let password = LCUtils.certificatePassword()
-        let lcDomain = UserDefaults.init(suiteName: LCUtils.appGroupID())
-        lcDomain?.setValue(password, forKey: "LCCertificatePassword")
         
+        guard let result = await installLC2Alert.open(), result != .cancel else {
+            return
+        }
         
         do {
             let packedIpaUrl = try LCUtils.archiveIPA(withBundleName: "LiveContainer2")
-            let storeInstallUrl = String(format: LCUtils.storeInstallURLScheme(), packedIpaUrl.absoluteString)
-            UIApplication.shared.open(URL(string: storeInstallUrl)!)
+            if result == .archiveOnly {
+                let movedAltStoreIpaUrl = LCPath.docPath.appendingPathComponent("LiveContainer2.ipa")
+                try FileManager.default.moveItem(at: packedIpaUrl, to: movedAltStoreIpaUrl)
+                successInfo = "lc.settings.multiLCArchiveSuccess".loc
+                successShow = true
+            } else {
+                let storeInstallUrl = String(format: LCUtils.storeInstallURLScheme(), packedIpaUrl.absoluteString)
+                await UIApplication.shared.open(URL(string: storeInstallUrl)!)
+            }
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -701,6 +759,10 @@ struct LCSettingsView: View {
         UIApplication.shared.open(URL(string: "https://github.com/khanhduytran0/LiveContainer")!)
     }
     
+    func openGitHub2() {
+        UIApplication.shared.open(URL(string: "https://github.com/hugeBlack/LiveContainer")!)
+    }
+    
     func openTwitter() {
         UIApplication.shared.open(URL(string: "https://twitter.com/TranKha50277352")!)
     }
@@ -792,6 +854,19 @@ struct LCSettingsView: View {
             }
         } else {
             print("certPassword not found in UserDefaults.")
+        }
+    }
+    
+    func exportMainExecutable() {
+        let url = Bundle.main.executableURL!
+        let fileManager = FileManager.default
+        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        do {
+            let destinationURL = documentsURL.appendingPathComponent(url.lastPathComponent)
+            try fileManager.copyItem(at: url, to: destinationURL)
+            print("Successfully copied main executable to Documents.")
+        } catch {
+            print("Error copying main executable \(error)")
         }
     }
     

@@ -14,7 +14,7 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 #include "TPRO.h"
-#include "fishhook/fishhook.h"
+#import "fishhook/fishhook.h"
 #include <mach-o/ldsyms.h>
 
 static int (*appMain)(int, char**);
@@ -27,6 +27,7 @@ NSBundle* lcMainBundle;
 NSDictionary* guestAppInfo;
 
 void NUDGuestHooksInit();
+void SecItemGuestHooksInit();
 
 @implementation NSUserDefaults(LiveContainer)
 + (instancetype)lcUserDefaults {
@@ -236,18 +237,30 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     NSURL *appGroupFolder = nil;
     
     NSString *bundlePath = [NSString stringWithFormat:@"%@/Applications/%@", docPath, selectedApp];
-    NSBundle *appBundle = [[NSBundle alloc] initWithPath:bundlePath];
+    guestAppInfo = [NSDictionary dictionaryWithContentsOfFile:[NSString stringWithFormat:@"%@/LCAppInfo.plist", bundlePath]];
     bool isSharedBundle = false;
     // not found locally, let's look for the app in shared folder
-    if (!appBundle) {
+    if(!guestAppInfo) {
         NSURL *appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[LCSharedUtils appGroupID]];
         appGroupFolder = [appGroupPath URLByAppendingPathComponent:@"LiveContainer"];
-        
         bundlePath = [NSString stringWithFormat:@"%@/Applications/%@", appGroupFolder.path, selectedApp];
-        appBundle = [[NSBundle alloc] initWithPath:bundlePath];
+        guestAppInfo = [NSDictionary dictionaryWithContentsOfFile:[NSString stringWithFormat:@"%@/LCAppInfo.plist", bundlePath]];
         isSharedBundle = true;
     }
-    guestAppInfo = [NSDictionary dictionaryWithContentsOfURL:[appBundle URLForResource:@"LCAppInfo" withExtension:@"plist"]];
+    
+    if(!guestAppInfo) {
+        return @"Unable to read LCAppInfo.plist";
+    }
+    
+    if([guestAppInfo[@"doUseLCBundleId"] boolValue] ) {
+        NSMutableDictionary* infoPlist = [NSMutableDictionary dictionaryWithContentsOfFile:[NSString stringWithFormat:@"%@/Info.plist", bundlePath]];
+        if(![infoPlist[@"CFBundleIdentifier"] isEqualToString:NSBundle.mainBundle.bundleIdentifier]) {
+            infoPlist[@"CFBundleIdentifier"] = NSBundle.mainBundle.bundleIdentifier;
+            [infoPlist writeToFile:[NSString stringWithFormat:@"%@/Info.plist", bundlePath] atomically:YES];
+        }
+    }
+    
+    NSBundle *appBundle = [[NSBundle alloc] initWithPath:bundlePath];
     
     if(!appBundle) {
         return @"App not found";
@@ -302,7 +315,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
             break;
         }
     }
-
+    
     // Overwrite @executable_path
     const char *appExecPath = appBundle.executablePath.UTF8String;
     *path = appExecPath;
@@ -397,17 +410,23 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
 
     // Overwrite executable info
     NSMutableArray<NSString *> *objcArgv = NSProcessInfo.processInfo.arguments.mutableCopy;
-    objcArgv[0] = appBundle.executablePath;
-    [NSProcessInfo.processInfo performSelector:@selector(setArguments:) withObject:objcArgv];
+    if(objcArgv && objcArgv.count > 0) {
+        objcArgv[0] = appBundle.executablePath;
+        [NSProcessInfo.processInfo performSelector:@selector(setArguments:) withObject:objcArgv];
+    }
     NSProcessInfo.processInfo.processName = appBundle.infoDictionary[@"CFBundleExecutable"];
     *_CFGetProgname() = NSProcessInfo.processInfo.processName.UTF8String;
     
     // hook NSUserDefault before running libraries' initializers
     NUDGuestHooksInit();
-    
+    SecItemGuestHooksInit();
     // Preload executable to bypass RT_NOLOAD
     uint32_t appIndex = _dyld_image_count();
     appMainImageIndex = appIndex;
+    
+    // hook dlsym to solve RTLD_MAIN_ONLY
+    rebind_symbols((struct rebinding[1]){{"dlsym", (void *)new_dlsym, (void **)&orig_dlsym}},1);
+    
     void *appHandle = dlopen(*path, RTLD_LAZY|RTLD_GLOBAL|RTLD_FIRST);
     appExecutableHandle = appHandle;
     const char *dlerr = dlerror();
@@ -422,8 +441,6 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
         *path = oldPath;
         return appError;
     }
-    // hook dlsym to solve RTLD_MAIN_ONLY
-    rebind_symbols((struct rebinding[1]){{"dlsym", (void *)new_dlsym, (void **)&orig_dlsym}},1);
     
     // Fix dynamic properties of some apps
     [NSUserDefaults performSelector:@selector(initialize)];
