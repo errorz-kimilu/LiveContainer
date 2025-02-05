@@ -211,10 +211,10 @@ void* new_dlsym(void * __handle, const char * __symbol) {
         if(strcmp(__symbol, MH_EXECUTE_SYM) == 0) {
             return (void*)_dyld_get_image_header(appMainImageIndex);
         }
-        return orig_dlsym(appExecutableHandle, __symbol);
+        __handle = appExecutableHandle;
     }
     
-    return orig_dlsym(__handle, __symbol);
+    __attribute__((musttail)) return orig_dlsym(__handle, __symbol);
 }
 
 static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContainer, int argc, char *argv[]) {
@@ -249,7 +249,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     }
     
     if(!guestAppInfo) {
-        return @"Unable to read LCAppInfo.plist";
+        return @"App bundle not found! Unable to read LCAppInfo.plist.";
     }
     
     if([guestAppInfo[@"doUseLCBundleId"] boolValue] ) {
@@ -409,11 +409,13 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     overwriteMainCFBundle();
 
     // Overwrite executable info
-    NSMutableArray<NSString *> *objcArgv = NSProcessInfo.processInfo.arguments.mutableCopy;
-    if(objcArgv && objcArgv.count > 0) {
-        objcArgv[0] = appBundle.executablePath;
-        [NSProcessInfo.processInfo performSelector:@selector(setArguments:) withObject:objcArgv];
+    if(!appBundle.executablePath) {
+        return @"App's executable path not found. Please try force re-signing or reinstalling this app.";
     }
+    
+    NSMutableArray<NSString *> *objcArgv = NSProcessInfo.processInfo.arguments.mutableCopy;
+    objcArgv[0] = appBundle.executablePath;
+    [NSProcessInfo.processInfo performSelector:@selector(setArguments:) withObject:objcArgv];
     NSProcessInfo.processInfo.processName = appBundle.infoDictionary[@"CFBundleExecutable"];
     *_CFGetProgname() = NSProcessInfo.processInfo.processName.UTF8String;
     
