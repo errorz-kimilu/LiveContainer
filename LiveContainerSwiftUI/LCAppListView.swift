@@ -520,7 +520,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             finalNewApp.selectedLanguage = appToReplace.appInfo.selectedLanguage
             finalNewApp.dataUUID = appToReplace.appInfo.dataUUID
             finalNewApp.orientationLock = appToReplace.appInfo.orientationLock
-            finalNewApp.ignoreDlopenError = appToReplace.appInfo.ignoreDlopenError
+            finalNewApp.dontInjectTweakLoader = appToReplace.appInfo.dontInjectTweakLoader
             finalNewApp.autoSaveDisabled = false
             finalNewApp.save()
         }
@@ -579,7 +579,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 return
             }
             
-            if !installUrl.startAccessingSecurityScopedResource() {
+            if !FileManager.default.isReadableFile(atPath: installUrl.path) && !installUrl.startAccessingSecurityScopedResource() {
                 errorInfo = "lc.appList.ipaAccessError".loc
                 errorShow = true
                 return
