@@ -25,6 +25,9 @@ class LCAppModel: ObservableObject, Hashable {
     @Published var uiDefaultDataFolder : String?
     @Published var uiContainers : [LCContainer]
     @Published var uiSelectedContainer : LCContainer?
+    
+    @Published var uiIs32bit : Bool
+    
     @Published var uiTweakFolder : String? {
         didSet {
             appInfo.tweakFolder = uiTweakFolder
@@ -82,6 +85,12 @@ class LCAppModel: ObservableObject, Hashable {
         }
     }
     
+    @Published var uiDontSign : Bool {
+        didSet {
+            appInfo.dontSign = uiDontSign
+        }
+    }
+    
     @Published var supportedLanaguages : [String]?
     
     var jitAlert : YesNoHelper? = nil
@@ -114,6 +123,9 @@ class LCAppModel: ObservableObject, Hashable {
         self.uiFixBlackScreen = appInfo.fixBlackScreen
         self.uiDontInjectTweakLoader = appInfo.dontInjectTweakLoader
         self.uiDontLoadTweakLoader = appInfo.dontLoadTweakLoader
+        self.uiDontSign = appInfo.dontSign
+        
+        self.uiIs32bit = appInfo.is32bit
         
         for container in uiContainers {
             if container.folderName == uiDefaultDataFolder {
@@ -164,9 +176,13 @@ class LCAppModel: ObservableObject, Hashable {
                 return
             }
         }
-        isAppRunning = true
+        await MainActor.run {
+            isAppRunning = true
+        }
         defer {
-            isAppRunning = false
+            Task { await MainActor.run {
+                isAppRunning = false
+            }}
         }
         try await signApp(force: false)
         
@@ -179,14 +195,15 @@ class LCAppModel: ObservableObject, Hashable {
             UserDefaults.standard.set([selectedLanguage], forKey: "AppleLanguages")
         }
         
-        if appInfo.isJITNeeded {
+        if appInfo.isJITNeeded || appInfo.is32bit {
             await self.jitLaunch()
         } else {
             LCUtils.launchToGuestApp()
         }
-
-        isAppRunning = false
         
+        await MainActor.run {
+            isAppRunning = false
+        }
     }
     
     func forceResign() async throws {
@@ -263,10 +280,14 @@ class LCAppModel: ObservableObject, Hashable {
     }
     
     func jitLaunch() async {
-        jitLog = ""
+        await MainActor.run {
+            jitLog = ""
+        }
         let enableJITTask = Task {
             let _ = await LCUtils.askForJIT { newMsg in
-                self.jitLog += "\(newMsg)\n"
+                Task { await MainActor.run {
+                    self.jitLog += "\(newMsg)\n"
+                }}
             }
 
         }

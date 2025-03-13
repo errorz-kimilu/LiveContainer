@@ -197,8 +197,11 @@ struct LCJITLessDiagnoseView : View {
                             if store == .AltStore {
                                 Text("AltStore")
                                     .foregroundStyle(.gray)
-                            } else {
+                            } else if store == .SideStore {
                                 Text("SideStore")
+                                    .foregroundStyle(.gray)
+                            } else {
+                                Text("lc.common.unknown")
                                     .foregroundStyle(.gray)
                             }
                         }
@@ -254,7 +257,10 @@ struct LCJITLessDiagnoseView : View {
                     Button {
                         getHelp()
                     } label: {
+                        // we apply a super cool rainbow effect so people will never miss this button
                         Text("lc.jitlessDiag.getHelp".loc)
+                            .bold()
+                            .rainbow()
                     }
                 }
 

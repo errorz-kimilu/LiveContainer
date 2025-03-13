@@ -57,8 +57,8 @@ class SharedModel: ObservableObject {
     @Published var developerMode = false
     // 0= not installed, 1= is installed, 2=current liveContainer is the second one
     @Published var multiLCStatus = 0
-    
-    @Published var certificateImported = false
+    @Published var isJITModalOpen = false
+    @AppStorage("LCCertificateImported") var certificateImported = false
     
     @Published var apps : [LCAppModel] = []
     @Published var hiddenApps : [LCAppModel] = []
@@ -132,7 +132,8 @@ class InputHelper : AlertHelper<String> {
     }
 }
 
-extension String: LocalizedError {
+extension String: @retroactive Error {}
+extension String: @retroactive LocalizedError {
     public var errorDescription: String? { return self }
         
     private static var enBundle : Bundle? = {
@@ -236,6 +237,10 @@ extension View {
             NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification),
             perform: { _ in f() }
         )
+    }
+    
+    func rainbow() -> some View {
+        self.modifier(RainbowAnimation())
     }
     
 }
@@ -355,6 +360,43 @@ public struct TextFieldAlertModifier: ViewModifier {
         alertController = nil
     }
 
+}
+
+// https://kieranb662.github.io/blog/2020/04/15/Rainbow
+struct RainbowAnimation: ViewModifier {
+    // 1
+    @State var isOn: Bool = false
+    let hueColors = stride(from: 0, to: 1, by: 0.01).map {
+        Color(hue: $0, saturation: 1, brightness: 1)
+    }
+    // 2
+    var duration: Double = 4
+    var animation: Animation {
+        Animation
+            .linear(duration: duration)
+            .repeatForever(autoreverses: false)
+    }
+
+    func body(content: Content) -> some View {
+    // 3
+        let gradient = LinearGradient(gradient: Gradient(colors: hueColors+hueColors), startPoint: .leading, endPoint: .trailing)
+        return content.overlay(GeometryReader { proxy in
+            ZStack {
+                gradient
+    // 4
+                    .frame(width: 2*proxy.size.width)
+    // 5
+                    .offset(x: self.isOn ? -proxy.size.width : 0)
+            }
+        })
+    // 6
+        .onAppear {
+            withAnimation(self.animation) {
+                self.isOn = true
+            }
+        }
+        .mask(content)
+    }
 }
 
 struct BasicButtonStyle: ButtonStyle {
@@ -540,7 +582,6 @@ extension LCUtils {
         }
         // sign start
         
-        let tweakItems : [String] = []
         let tmpDir = fm.temporaryDirectory.appendingPathComponent("TweakTmp.app")
         if fm.fileExists(atPath: tmpDir.path) {
             try fm.removeItem(at: tmpDir)
@@ -739,15 +780,7 @@ extension LCUtils {
     public static func askForJIT(onServerMessage : ((String) -> Void)? ) async -> Bool {
         // if LiveContainer is installed by TrollStore
         let tsPath = "\(Bundle.main.bundlePath)/../_TrollStore"
-        if FileManager.default.fileExists(atPath: tsPath) {
-            let urlScheme = "apple-magnifier://enable-jit?bundle-id=%@"
-            guard let bundleIdentifier = Bundle.main.bundleIdentifier,
-                  let launchURL = URL(string: String(format: urlScheme, bundleIdentifier)),
-                  await UIApplication.shared.canOpenURL(launchURL) else {
-                return false
-            }
-            
-            await UIApplication.shared.open(launchURL, options: [:], completionHandler: nil)
+        if (access((tsPath as NSString).utf8String, 0) == 0) {
             LCUtils.launchToGuestApp()
             return true
         }
@@ -775,7 +808,7 @@ extension LCUtils {
                 
                 onServerMessage?("Contacting SideJITServer at \(sideJITServerAddress)...")
                 let request = URLRequest(url: launchJITUrl)
-                let (data, response) = try await session.asyncRequest(request: request)
+                let (data, _) = try await session.asyncRequest(request: request)
                 if let data {
                     onServerMessage?(String(decoding: data, as: UTF8.self))
                 }
@@ -785,9 +818,7 @@ extension LCUtils {
             
             return false
         } else if (jitEnabler == .JITStreamerEB) {
-            guard var JITStresmerEBAddress = groupUserDefaults.string(forKey: "LCSideJITServerAddress") else {
-                return false
-            }
+            var JITStresmerEBAddress = groupUserDefaults.string(forKey: "LCSideJITServerAddress") ?? ""
             if JITStresmerEBAddress.isEmpty {
                 JITStresmerEBAddress = "http://[fd00::]:9172"
             }
@@ -807,7 +838,7 @@ extension LCUtils {
                 
                 // check mount status
                 onServerMessage?("Checking mount status...")
-                let (mountData, mountResponse) = try await session.asyncRequest(request: mountRequest)
+                let (mountData, _) = try await session.asyncRequest(request: mountRequest)
                 guard let mountData else {
                     onServerMessage?("Failed to mount status from server!")
                     return false
@@ -833,7 +864,7 @@ extension LCUtils {
                 
                 onServerMessage?("Sending launch request...")
                 let request1 = URLRequest(url: launchJITUrl)
-                let (data, response) = try await session.asyncRequest(request: request1)
+                let (data, _) = try await session.asyncRequest(request: request1)
                 
 
                 guard let data else {
@@ -859,7 +890,7 @@ extension LCUtils {
                     }
                     
                     let request2 = URLRequest(url: statusUrl)
-                    let (data, response) = try await session.asyncRequest(request: request2)
+                    let (data, _) = try await session.asyncRequest(request: request2)
                     guard let data else {
                         onServerMessage?("Failed to retrieve data from server!")
                         return false

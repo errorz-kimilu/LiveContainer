@@ -79,6 +79,14 @@ struct LCAppBanner : View {
                                     Capsule().fill(Color("JITBadgeColor"))
                                 )
                         }
+                        if model.uiIs32bit {
+                            Text("32")
+                                .font(.system(size: 8))
+                                .frame(width: 16, height:16)
+                                .background(
+                                    Capsule().fill(Color("32BitBadgeColor"))
+                                )
+                        }
                         if model.uiIsLocked && !model.uiIsHidden {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 8))
@@ -160,7 +168,7 @@ struct LCAppBanner : View {
                     Text(appInfo.relativeBundlePath)
                 }
                 if !model.uiIsShared {
-                    if let container = model.uiSelectedContainer {
+                    if model.uiSelectedContainer != nil {
                         Button {
                             openDataFolder()
                         } label: {
@@ -226,14 +234,13 @@ struct LCAppBanner : View {
             } label: {
                 Text("lc.common.delete".loc)
             }
-            Button("lc.common.cancel".loc, role: .cancel) {
+            Button("lc.common.no".loc, role: .cancel) {
                 appFolderRemovalAlert.close(result: false)
             }
         } message: {
             Text("lc.appBanner.deleteDataMsg \(appInfo.displayName()!)")
         }
         .sheet(isPresented: $jitAlert.show, onDismiss: {
-            NSLog("[LC] onDismiss")
             jitAlert.close(result: false)
         }) {
             JITEnablingModal
@@ -249,6 +256,9 @@ struct LCAppBanner : View {
             Text(errorInfo)
         }
         
+        .onChange(of: jitAlert.show) { newValue in
+            sharedModel.isJITModalOpen = newValue
+        }
     }
     
     var JITEnablingModal : some View {

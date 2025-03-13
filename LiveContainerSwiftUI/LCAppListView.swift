@@ -170,7 +170,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                         if !installprogressVisible {
                             Menu {
                                 
-                                Button("lc.appList.installFromIpa".loc, systemImage: "document.badge.plus", action: {
+                                Button("lc.appList.installFromIpa".loc, systemImage: "doc.badge.plus", action: {
                                     choosingIPA = true
                                 })
                                 Button("lc.appList.installFromUrl".loc, systemImage: "link.badge.plus", action: {
@@ -485,6 +485,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         var signError : String? = nil
         var signSuccess = false
         await withCheckedContinuation({ c in
+            if appToReplace?.uiDontSign ?? false || LCUtils.appGroupUserDefault.bool(forKey: "LCDontSignApp") {
+                finalNewApp.dontSign = true
+            }
             finalNewApp.signer = Signer(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCDefaultSigner"))!
             finalNewApp.patchExecAndSignIfNeed(completionHandler: { success, error in
                 signError = error
@@ -522,6 +525,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             finalNewApp.orientationLock = appToReplace.appInfo.orientationLock
             finalNewApp.dontInjectTweakLoader = appToReplace.appInfo.dontInjectTweakLoader
             finalNewApp.hideLiveContainer = appToReplace.appInfo.hideLiveContainer
+            finalNewApp.dontLoadTweakLoader = appToReplace.appInfo.dontLoadTweakLoader
+            finalNewApp.fixBlackScreen = appToReplace.appInfo.fixBlackScreen
+            finalNewApp.doUseLCBundleId = appToReplace.appInfo.doUseLCBundleId
             finalNewApp.autoSaveDisabled = false
             finalNewApp.save()
         }
@@ -585,7 +591,8 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 return
             }
             
-            if !FileManager.default.isReadableFile(atPath: installUrl.path) && !installUrl.startAccessingSecurityScopedResource() {
+            let fm = FileManager.default
+            if !fm.isReadableFile(atPath: installUrl.path) && !installUrl.startAccessingSecurityScopedResource() {
                 errorInfo = "lc.appList.ipaAccessError".loc
                 errorShow = true
                 return
@@ -597,6 +604,23 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             
             do {
                 try await installIpaFile(installUrl)
+            } catch {
+                errorInfo = error.localizedDescription
+                errorShow = true
+            }
+            
+            do {
+                // delete ipa if it's in inbox
+                var shouldDelete = false
+                if let documentsDirectory = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
+                    let inboxURL = documentsDirectory.appendingPathComponent("Inbox")
+                    let fileURL = inboxURL.appendingPathComponent(installUrl.lastPathComponent)
+                    
+                    shouldDelete = fm.fileExists(atPath: fileURL.path)
+                }
+                if shouldDelete {
+                    try fm.removeItem(at: installUrl)
+                }
             } catch {
                 errorInfo = error.localizedDescription
                 errorShow = true

@@ -1,4 +1,5 @@
 @import CommonCrypto;
+@import MachO;
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
@@ -51,6 +52,15 @@
             [self save];
         }
         
+        // fix bundle id and execName if crash when signing
+        if (_infoPlist[@"LCBundleIdentifier"]) {
+            _infoPlist[@"CFBundleExecutable"] = _infoPlist[@"LCBundleExecutable"];
+            _infoPlist[@"CFBundleIdentifier"] = _infoPlist[@"LCBundleIdentifier"];
+            [_infoPlist removeObjectForKey:@"LCBundleExecutable"];
+            [_infoPlist removeObjectForKey:@"LCBundleIdentifier"];
+            [_infoPlist writeToFile:[NSString stringWithFormat:@"%@/Info.plist", bundlePath] atomically:YES];
+        }
+
         _autoSaveDisabled = false;
     }
     return self;
@@ -163,19 +173,26 @@
 
 - (UIImage*)icon {
     NSBundle* bundle = [[NSBundle alloc] initWithPath: _bundlePath];
-    UIImage* icon = [UIImage imageNamed:[_infoPlist valueForKeyPath:@"CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles"][0] inBundle:bundle compatibleWithTraitCollection:nil];
-    if(!icon) {
-        icon = [UIImage imageNamed:[_infoPlist valueForKeyPath:@"CFBundleIconFiles"][0] inBundle:bundle compatibleWithTraitCollection:nil];
+    NSString* iconPath = nil;
+    UIImage* icon = nil;
+
+    if((iconPath = [_infoPlist valueForKeyPath:@"CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles"][0]) &&
+       (icon = [UIImage imageNamed:iconPath inBundle:bundle compatibleWithTraitCollection:nil])) {
+        return icon;
     }
     
-    if(!icon) {
-        icon = [UIImage imageNamed:[_infoPlist valueForKeyPath:@"CFBundleIcons~ipad"][@"CFBundlePrimaryIcon"][@"CFBundleIconName"] inBundle:bundle compatibleWithTraitCollection:nil];
+    if((iconPath = [_infoPlist valueForKeyPath:@"CFBundleIconFiles"][0]) &&
+       (icon = [UIImage imageNamed:iconPath inBundle:bundle compatibleWithTraitCollection:nil])) {
+        return icon;
     }
     
-    if(!icon) {
-        icon = [UIImage imageNamed:@"DefaultIcon"];
+    if((iconPath = [_infoPlist valueForKeyPath:@"CFBundleIcons~ipad"][@"CFBundlePrimaryIcon"][@"CFBundleIconName"]) &&
+       (icon = [UIImage imageNamed:iconPath inBundle:bundle compatibleWithTraitCollection:nil])) {
+        return icon;
     }
-    return icon;
+
+    return [UIImage imageNamed:@"DefaultIcon"];
+
 }
 
 - (UIImage *)generateLiveContainerWrappedIcon {
@@ -259,15 +276,16 @@
 }
 
 - (void)patchExecAndSignIfNeedWithCompletionHandler:(void(^)(bool success, NSString* errorInfo))completetionHandler progressHandler:(void(^)(NSProgress* progress))progressHandler forceSign:(BOOL)forceSign {
+    [NSUserDefaults.standardUserDefaults setObject:@(YES) forKey:@"SigningInProgress"];
     NSString *appPath = self.bundlePath;
     NSString *infoPath = [NSString stringWithFormat:@"%@/Info.plist", appPath];
     NSMutableDictionary *info = _info;
     NSMutableDictionary *infoPlist = _infoPlist;
     if (!info) {
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
         completetionHandler(NO, @"Info.plist not found");
         return;
     }
-    
     NSFileManager* fm = NSFileManager.defaultManager;
     // Update patch
     int currentPatchRev = 6;
@@ -280,10 +298,19 @@
         [fm removeItemAtPath:execPath error:&err];
         [fm moveItemAtPath:backupPath toPath:execPath error:&err];
         
+        __block bool has64bitSlice = NO;
         NSString *error = LCParseMachO(execPath.UTF8String, ^(const char *path, struct mach_header_64 *header) {
-            LCPatchExecSlice(path, header, ![self dontInjectTweakLoader]);
+            if(header->cputype == CPU_TYPE_ARM64) {
+                has64bitSlice |= YES;
+                LCPatchExecSlice(path, header, ![self dontInjectTweakLoader]);
+            }
         });
+        if(!has64bitSlice) {
+            self.is32bit = true;
+        }
+        
         if (error) {
+            [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
             completetionHandler(NO, error);
             return;
         }
@@ -299,7 +326,8 @@
         [self save];
     }
 
-    if (!LCUtils.certificatePassword) {
+    if (!LCUtils.certificatePassword || self.is32bit || self.dontSign) {
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
         completetionHandler(YES, nil);
         return;
     }
@@ -311,6 +339,7 @@
     if(expirationDate && [teamId isEqualToString:[LCUtils teamIdentifier]] && [[[NSUserDefaults alloc] initWithSuiteName:[LCUtils appGroupID]] boolForKey:@"LCSignOnlyOnExpiration"] && !forceSign) {
         if([expirationDate laterDate:[NSDate now]] == expirationDate) {
             // not expired yet, don't sign again
+            [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
             completetionHandler(YES, nil);
             return;
         }
@@ -323,6 +352,7 @@
         CC_SHA1(LCUtils.certificateData.bytes, (CC_LONG)LCUtils.certificateData.length, digest);
         signID = *(uint64_t *)digest + signRevision;
     } else {
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
         completetionHandler(NO, @"Failed to find signing certificate. Please refresh your store and try again.");
         return;
     }
@@ -367,6 +397,7 @@
                     // Save sign ID and restore bundle ID
                     [self save];
                     [infoPlist writeToFile:infoPath atomically:YES];
+                    [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
                     completetionHandler(success, error.localizedDescription);
 
                 });
@@ -384,6 +415,7 @@
                     break;
                     
                 default:
+                    [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
                     completetionHandler(NO, @"Signer Not Found");
                     break;
             }
@@ -395,6 +427,7 @@
 
     } else {
         // no need to sign again
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
         completetionHandler(YES, nil);
         return;
     }
@@ -599,5 +632,32 @@
     _info[@"LCContainers"] = containerInfo;
     [self save];
 }
+
+- (bool)is32bit {
+    if(_info[@"is32bit"] != nil) {
+        return [_info[@"is32bit"] boolValue];
+    } else {
+        return NO;
+    }
+}
+- (void)setIs32bit:(bool)is32bit {
+    _info[@"is32bit"] = [NSNumber numberWithBool:is32bit];
+    [self save];
+    
+}
+
+- (bool)dontSign {
+    if(_info[@"dontSign"] != nil) {
+        return [_info[@"dontSign"] boolValue];
+    } else {
+        return NO;
+    }
+}
+- (void)setDontSign:(bool)dontSign {
+    _info[@"dontSign"] = [NSNumber numberWithBool:dontSign];
+    [self save];
+    
+}
+
 
 @end
