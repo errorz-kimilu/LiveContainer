@@ -17,6 +17,7 @@ enum PatchChoice {
 enum JITEnablerType : Int {
     case SideJITServer = 0
     case JITStreamerEB = 1
+    case JITStreamerEBLegacy = 2
 }
 
 struct LCSettingsView: View {
@@ -42,7 +43,6 @@ struct LCSettingsView: View {
     
     @State var isJitLessEnabled = false
     @AppStorage("LCDefaultSigner", store: LCUtils.appGroupUserDefault) var defaultSigner = Signer.ZSign
-    @AppStorage("LCSignOnlyOnExpiration", store: LCUtils.appGroupUserDefault) var isSignOnlyOnExpiration = true
     @AppStorage("LCFrameShortcutIcons") var frameShortIcon = false
     @AppStorage("LCSwitchAppWithoutAsking") var silentSwitchApp = false
     @AppStorage("LCOpenWebPageWithoutAsking") var silentOpenWebPage = false
@@ -113,12 +113,6 @@ struct LCSettingsView: View {
                             Text("lc.settings.jitlessDiagnose".loc)
                         }
                         
-                        if isAltStorePatched {
-                            Toggle(isOn: $isSignOnlyOnExpiration) {
-                                Text("lc.settings.signOnlyOnExpiration".loc)
-                            }
-                        }
-                        
                         Picker(selection: $defaultSigner) {
                             if !sharedModel.certificateImported {
                                 Text("AltSign").tag(Signer.AltSign)
@@ -180,7 +174,8 @@ struct LCSettingsView: View {
                     }
                     Picker(selection: $JITEnabler) {
                         Text("SideJITServer/JITStreamer 2.0").tag(JITEnablerType.SideJITServer)
-                        Text("JitStreamer-EB").tag(JITEnablerType.JITStreamerEB)
+                        Text("JitStreamer-EB (Attach)").tag(JITEnablerType.JITStreamerEB)
+                        Text("JitStreamer-EB (Relaunch)").tag(JITEnablerType.JITStreamerEBLegacy)
                     } label: {
                         Text("lc.settings.jitEnabler".loc)
                     }
@@ -276,37 +271,6 @@ struct LCSettingsView: View {
                     }
                 }
                 
-                if sharedModel.developerMode {
-                    Section {
-                        Toggle(isOn: $injectToLCItelf) {
-                            Text("lc.settings.injectLCItself".loc)
-                        }
-                        Toggle(isOn: $ignoreJITOnLaunch) {
-                            Text("Ignore JIT on Launching App")
-                        }
-                        Button {
-                            export()
-                        } label: {
-                            Text("Export Cert")
-                        }
-                        Button {
-                            exportMainExecutable()
-                        } label: {
-                            Text("Export Main Executable")
-                        }
-                        HStack {
-                            Text("LiveExec32 .app path")
-                            Spacer()
-                            TextField("", text: $liveExec32Path)
-                                .multilineTextAlignment(.trailing)
-                        }
-                    } header: {
-                        Text("Developer Settings")
-                    } footer: {
-                        Text("lc.settings.injectLCItselfDesc".loc)
-                    }
-                }
-                
                 Section {
                     HStack {
                         Image("GitHub")
@@ -342,6 +306,37 @@ struct LCSettingsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .background(Color(UIColor.systemGroupedBackground))
                     .listRowInsets(EdgeInsets())
+                
+                if sharedModel.developerMode {
+                    Section {
+                        Toggle(isOn: $injectToLCItelf) {
+                            Text("lc.settings.injectLCItself".loc)
+                        }
+                        Toggle(isOn: $ignoreJITOnLaunch) {
+                            Text("Ignore JIT on Launching App")
+                        }
+                        Button {
+                            export()
+                        } label: {
+                            Text("Export Cert")
+                        }
+                        Button {
+                            exportMainExecutable()
+                        } label: {
+                            Text("Export Main Executable")
+                        }
+                        HStack {
+                            Text("LiveExec32 .app path")
+                            Spacer()
+                            TextField("", text: $liveExec32Path)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    } header: {
+                        Text("Developer Settings")
+                    } footer: {
+                        Text("lc.settings.injectLCItselfDesc".loc)
+                    }
+                }
             }
             .navigationBarTitle("lc.tabView.settings".loc)
             .onAppear {

@@ -32,7 +32,7 @@ void zsign(NSString *appPath,
           NSData *key,
           NSString *pass,
           NSProgress* progress,
-          void(^completionHandler)(BOOL success, NSDate* expirationDate, NSString* teamId, NSError *error)
+          void(^completionHandler)(BOOL success, NSError *error)
           );
 NSString* getTeamId(NSData *prov,
                     NSData *key,

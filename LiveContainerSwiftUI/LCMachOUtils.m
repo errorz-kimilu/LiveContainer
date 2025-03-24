@@ -98,11 +98,11 @@ void LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doIn
     }
 }
 
-NSString *LCParseMachO(const char *path, LCParseMachOCallback callback) {
-    int fd = open(path, O_RDWR, (mode_t)0600);
+NSString *LCParseMachO(const char *path, bool readOnly, LCParseMachOCallback callback) {
+    int fd = open(path, readOnly ? O_RDONLY : O_RDWR, (mode_t)readOnly ? 0400 : 0600);
     struct stat s;
     fstat(fd, &s);
-    void *map = mmap(NULL, s.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    void *map = mmap(NULL, s.st_size, readOnly ? PROT_READ : (PROT_READ | PROT_WRITE), readOnly ? MAP_PRIVATE : MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
         return [NSString stringWithFormat:@"Failed to map %s: %s", path, strerror(errno)];
     }
@@ -114,12 +114,12 @@ NSString *LCParseMachO(const char *path, LCParseMachOCallback callback) {
         struct fat_arch *arch = (struct fat_arch *)(map + sizeof(struct fat_header));
         for (int i = 0; i < OSSwapInt32(header->nfat_arch); i++) {
             if (OSSwapInt32(arch->cputype) == CPU_TYPE_ARM64) {
-                callback(path, (struct mach_header_64 *)(map + OSSwapInt32(arch->offset)));
+                callback(path, (struct mach_header_64 *)(map + OSSwapInt32(arch->offset)), fd, map);
             }
             arch = (struct fat_arch *)((void *)arch + sizeof(struct fat_arch));
         }
     } else if (magic == MH_MAGIC_64 || magic == MH_MAGIC) {
-        callback(path, (struct mach_header_64 *)map);
+        callback(path, (struct mach_header_64 *)map, fd, map);
     } else {
         return @"Not a Mach-O file";
     }
@@ -195,8 +195,7 @@ struct ui_CS_blob {
 };
 
 
-NSString* getLCEntitlementXML(void) {
-    struct mach_header_64* header = dlsym(RTLD_MAIN_ONLY, MH_EXECUTE_SYM);
+struct code_signature_command* findSignatureCommand(struct mach_header_64* header) {
     uint8_t *imageHeaderPtr = (uint8_t*)header + sizeof(struct mach_header_64);
     struct load_command *command = (struct load_command *)imageHeaderPtr;
     struct code_signature_command* codeSignCommand = 0;
@@ -207,13 +206,19 @@ NSString* getLCEntitlementXML(void) {
         }
         command = (struct load_command *)((void *)command + command->cmdsize);
     }
+    return codeSignCommand;
+}
+
+NSString* getLCEntitlementXML(void) {
+    struct mach_header_64* header = dlsym(RTLD_MAIN_ONLY, MH_EXECUTE_SYM);
+    struct code_signature_command* codeSignCommand = findSignatureCommand(header);
+
     if(!codeSignCommand) {
         return @"Unable to find LC_CODE_SIGNATURE command.";
     }
     struct ui_CS_SuperBlob* blob = (void*)header + codeSignCommand->dataoff;
     if(blob->magic != OSSwapInt32(0xfade0cc0)) {
         return [NSString stringWithFormat:@"CodeSign blob magic mismatch %8x.", blob->magic];
-        return nil;
     }
     struct ui_CS_BlobIndex* entitlementBlobIndex = 0;
     struct ui_CS_BlobIndex* nowIndex = (void*)blob + sizeof(struct ui_CS_SuperBlob);
@@ -225,13 +230,11 @@ NSString* getLCEntitlementXML(void) {
         nowIndex = (void*)nowIndex + sizeof(struct ui_CS_BlobIndex);
     }
     if(entitlementBlobIndex == 0) {
-        NSLog(@"[LC] entitlement blob index not found.");
-        return 0;
+        return @"[LC] entitlement blob index not found.";
     }
     struct ui_CS_blob* entitlementBlob = (void*)blob + OSSwapInt32(entitlementBlobIndex->offset);
     if(entitlementBlob->magic != OSSwapInt32(0xfade7171)) {
         return [NSString stringWithFormat:@"EntitlementBlob magic mismatch %8x.", blob->magic];
-        return nil;
     };
     int32_t xmlLength = OSSwapInt32(entitlementBlob->length) - sizeof(struct ui_CS_blob);
     void* xmlPtr = (void*)entitlementBlob + sizeof(struct ui_CS_blob);
@@ -243,5 +246,45 @@ NSString* getLCEntitlementXML(void) {
 
     NSString* ans = [NSString stringWithUTF8String:xmlString];
     free(xmlString);
+    return ans;
+}
+
+bool checkCodeSignature(const char* path) {
+    __block bool checked = false;
+    __block bool ans = false;
+    LCParseMachO(path, true, ^(const char *path, struct mach_header_64 *header, int fd, void *filePtr) {
+        if(checked || header->cputype != CPU_TYPE_ARM64) {
+            return;
+        }
+        checked = true;
+        
+        struct code_signature_command* codeSignatureCommand = findSignatureCommand(header);
+        off_t sliceOffset = (void*)header - filePtr;
+        fsignatures_t siginfo;
+        siginfo.fs_file_start = sliceOffset;
+        siginfo.fs_blob_start = (void*)(long)(codeSignatureCommand->dataoff);
+        siginfo.fs_blob_size  = codeSignatureCommand->datasize;
+        int addFileSigsReault = fcntl(fd, F_ADDFILESIGS_RETURN, &siginfo);
+        if ( addFileSigsReault == -1 ) {
+            ans = false;
+            return;
+        }
+        
+        fchecklv_t checkInfo;
+        char     messageBuffer[512];
+        messageBuffer[0]                = '\0';
+        checkInfo.lv_error_message_size = sizeof(messageBuffer);
+        checkInfo.lv_error_message      = messageBuffer;
+        checkInfo.lv_file_start= sliceOffset;
+        int checkLVresult = fcntl(fd, F_CHECK_LV, &checkInfo);
+        
+        if (checkLVresult == 0) {
+            ans = true;
+            return;
+        } else {
+            ans = false;
+            return;
+        }
+    });
     return ans;
 }

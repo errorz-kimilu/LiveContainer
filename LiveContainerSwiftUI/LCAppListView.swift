@@ -503,7 +503,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             if signSuccess {
                 errorInfo = "\("lc.appList.signSuccessWithError".loc)\n\n\(signError)"
             } else {
-                errorInfo = signError
+                errorInfo = signError.loc
             }
             errorShow = true
         }

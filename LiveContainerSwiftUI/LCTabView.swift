@@ -124,7 +124,7 @@ struct LCTabView: View {
         var errorStr = UserDefaults.standard.string(forKey: "error")
         
         if errorStr == nil && UserDefaults.standard.bool(forKey: "SigningInProgress") {
-            errorStr = "lc.core.crashDuringSignErr".loc
+            errorStr = "lc.signer.crashDuringSignErr".loc
             UserDefaults.standard.removeObject(forKey: "SigningInProgress")
         }
         

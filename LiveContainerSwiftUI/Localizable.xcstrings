@@ -2082,23 +2082,6 @@
         }
       }
     },
-    "lc.core.crashDuringSignErr" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LiveContainer seems to crash during last app signing, and the app might be corrupted. Please consider reinstalling the app or switching to another signer."
-          }
-        },
-        "zh_CN" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LiveContainer似乎在上次App签名时崩溃了，App可能已经损坏，请考虑重新安装或者切换到另一个签名工具。"
-          }
-        }
-      }
-    },
     "lc.download.downloading" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2146,6 +2129,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未找到App %@。"
+          }
+        }
+      }
+    },
+    "lc.guestTweak.jitError %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to acquire JIT: %@"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获取JIT权限失败： %@"
+          }
+        }
+      }
+    },
+    "lc.guestTweak.jitSuccess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JIT is successfully acquired."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "成功地获取了JIT权限。"
           }
         }
       }
@@ -3511,7 +3528,7 @@
         "zh_CN" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除证"
+            "value" : "删除证书"
           }
         }
       }
@@ -3563,40 +3580,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "若AltSign签名遇到问题，可尝试使用ZSign，反之亦然。切换签名工具后请重启LiveContainer。"
-          }
-        }
-      }
-    },
-    "lc.settings.signOnlyOnExpiration" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Re-Sign Only on Certificate Expires"
-          }
-        },
-        "zh_CN" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅在证书过期时重新签名"
-          }
-        }
-      }
-    },
-    "lc.settings.signOnlyOnExpirationDesc" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "If you see frequent re-sign, enable this option."
-          }
-        },
-        "zh_CN" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "如果App重新签名过于频繁，可尝试启用此项。"
           }
         }
       }
@@ -3750,6 +3733,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请勿将LiveContainer用于盗版。"
+          }
+        }
+      }
+    },
+    "lc.signer.crashDuringSignErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LiveContainer seems to crash during last app signing, and the app might be corrupted. Please consider reinstalling the app or switching to another signer."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LiveContainer似乎在上次App签名时崩溃了，App可能已经损坏，请考虑重新安装或者切换到另一个签名工具。"
+          }
+        }
+      }
+    },
+    "lc.signer.failedToCreateAltCertErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to create ALTCertificate. This is likely to be caused by an invalid certificate. Please check the JIT-Less Diagnose page and see if there’s something wrong with your JIT-Less setup"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法创建ALTCertificate，这可能是由于证书无效导致的。请查看“免JIT诊断”页面以检查免JIT模式设置存在问题。"
+          }
+        }
+      }
+    },
+    "lc.signer.failedToCreateAltProvisionCertErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to create ALTProvisioningProfile. This is likely to be caused by an invalid certificate. Please check the JIT-Less Diagnose page and see if there’s something wrong with your JIT-Less setup"
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法创建ALTProvisioningProfile，这可能是证书无效导致的。请查看“免JIT诊断”页面以检查免JIT模式设置存在问题。"
+          }
+        }
+      }
+    },
+    "lc.signer.latestCertificateInvalidErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app is signed with the latest certificate but its code signature is invalid. Please check JIT-Less Diagnose page and see if there's something with your JIT-Less setup."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已经使用最新的证书签名此App，但其签名仍然无效，这可能是证书无效导致的。请查看“免JIT诊断”页面以检查免JIT模式设置存在问题。"
+          }
+        }
+      }
+    },
+    "lc.signer.noCertificateFoundErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to find signing certificate. Please check JIT-Less Diagnose page and see if there's something with your JIT-Less setup."
+          }
+        },
+        "zh_CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法找到证书用于签名。请查看“免JIT诊断”页面以检查免JIT模式设置存在问题。"
           }
         }
       }

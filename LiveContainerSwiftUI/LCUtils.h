@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 
-typedef void (^LCParseMachOCallback)(const char *path, struct mach_header_64 *header);
+typedef void (^LCParseMachOCallback)(const char *path, struct mach_header_64 *header, int fd, void* filePtr);
 
 typedef NS_ENUM(NSInteger, Store){
     SideStore = 0,
@@ -13,13 +13,15 @@ typedef NS_ENUM(NSInteger, Signer){
     ZSign = 1
 };
 
-NSString *LCParseMachO(const char *path, LCParseMachOCallback callback);
+NSString *LCParseMachO(const char *path, bool readOnly, LCParseMachOCallback callback);
 void LCPatchAddRPath(const char *path, struct mach_header_64 *header);
 void LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doInject);
 void LCPatchLibrary(const char *path, struct mach_header_64 *header);
 void LCChangeExecUUID(struct mach_header_64 *header);
 void LCPatchAltStore(const char *path, struct mach_header_64 *header);
 NSString* getLCEntitlementXML(void);
+bool checkCodeSignature(const char* path);
+void refreshFile(NSString* execPath);
 
 @interface PKZipArchiver : NSObject
 
@@ -39,8 +41,8 @@ NSString* getLCEntitlementXML(void);
 + (BOOL)launchToGuestAppWithURL:(NSURL *)url;
 
 + (void)removeCodeSignatureFromBundleURL:(NSURL *)appURL;
-+ (NSProgress *)signAppBundle:(NSURL *)path completionHandler:(void (^)(BOOL success, NSDate* expirationDate, NSString* teamId, NSError *error))completionHandler;
-+ (NSProgress *)signAppBundleWithZSign:(NSURL *)path completionHandler:(void (^)(BOOL success, NSDate* expirationDate, NSString* teamId, NSError *error))completionHandler;
++ (NSProgress *)signAppBundle:(NSURL *)path completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
++ (NSProgress *)signAppBundleWithZSign:(NSURL *)path completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
 + (NSString*)getCertTeamIdWithKeyData:(NSData*)keyData password:(NSString*)password;
 + (BOOL)isAppGroupAltStoreLike;
 + (Store)store;

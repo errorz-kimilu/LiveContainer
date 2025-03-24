@@ -162,27 +162,6 @@ extension String: @retroactive LocalizedError {
     
 }
 
-extension URLSession {
-    public func asyncRequest(request: URLRequest) async throws -> (Data?, URLResponse?) {
-        var ansData: Data?
-        var ansResponse: URLResponse?
-        var ansError: Error?
-        await withCheckedContinuation { c in
-            let task = self.dataTask(with: request) { data, response, error in
-                ansError = error
-                ansResponse = response
-                ansData = data
-                c.resume()
-            }
-            task.resume()
-        }
-        if let ansError {
-            throw ansError
-        }
-        return (ansData, ansResponse)
-    }
-}
-
 extension UTType {
     static let ipa = UTType(filenameExtension: "ipa")!
     static let dylib = UTType(filenameExtension: "dylib")!
@@ -469,7 +448,7 @@ struct SiteAssociation : Codable {
 extension LCUtils {
     public static let appGroupUserDefault = UserDefaults.init(suiteName: LCUtils.appGroupID()) ?? UserDefaults.standard
     
-    public static func signFilesInFolder(url: URL, signer:Signer, onProgressCreated: (Progress) -> Void) async -> (String?, Date?) {
+    public static func signFilesInFolder(url: URL, signer:Signer, onProgressCreated: (Progress) -> Void) async -> String? {
         let fm = FileManager()
         var ans : String? = nil
         let codesignPath = url.appendingPathComponent("_CodeSignature")
@@ -483,11 +462,10 @@ extension LCUtils {
         do {
             try fm.copyItem(at: Bundle.main.executableURL!, to: tmpExecPath)
         } catch {
-            return (nil, nil)
+            return nil
         }
-        var ansDate : Date? = nil
         await withCheckedContinuation { c in
-            func compeletionHandler(success: Bool, expirationDate: Date?, teamId : String?, error: Error?){
+            func compeletionHandler(success: Bool, error: Error?){
                 do {
                     if let error = error {
                         ans = error.localizedDescription
@@ -501,7 +479,6 @@ extension LCUtils {
 
                     try fm.removeItem(at: tmpExecPath)
                     try fm.removeItem(at: tmpInfoPath)
-                    ansDate = expirationDate
                 } catch {
                     ans = error.localizedDescription
                 }
@@ -520,7 +497,7 @@ extension LCUtils {
             }
             onProgressCreated(progress)
         }
-        return (ans, ansDate)
+        return ans
 
     }
     
@@ -537,10 +514,8 @@ extension LCUtils {
         // check if re-sign is needed
         // if sign is expired, or inode number of any file changes, we need to re-sign
         let tweakSignInfo = NSMutableDictionary(contentsOf: tweakFolderUrl.appendingPathComponent("TweakInfo.plist")) ?? NSMutableDictionary()
-        let expirationDate = tweakSignInfo["expirationDate"] as? Date
         var signNeeded = false
-        if let expirationDate, expirationDate.compare(Date.now) == .orderedDescending, !force {
-            
+        if !force {
             let tweakFileINodeRecord = tweakSignInfo["files"] as? [String:NSNumber] ?? [String:NSNumber]()
             let fileURLs = try fm.contentsOfDirectory(at: tweakFolderUrl, includingPropertiesForKeys: nil)
             for fileURL in fileURLs {
@@ -561,7 +536,7 @@ extension LCUtils {
                 }
                 let inodeNumber = try fm.attributesOfItem(atPath: fileURL.path)[.systemFileNumber] as? NSNumber
                 if let fileInodeNumber = tweakFileINodeRecord[fileURL.lastPathComponent] {
-                    if(fileInodeNumber != inodeNumber) {
+                    if(fileInodeNumber != inodeNumber || !checkCodeSignature((fileURL.path as NSString).utf8String)) {
                         signNeeded = true
                         break
                     }
@@ -614,7 +589,7 @@ extension LCUtils {
             return
         }
         
-        let (error, expirationDate2) = await LCUtils.signFilesInFolder(url: tmpDir, signer: signer) { p in
+        let error = await LCUtils.signFilesInFolder(url: tmpDir, signer: signer) { p in
             if let progressHandler {
                 progressHandler(p)
             }
@@ -625,7 +600,6 @@ extension LCUtils {
         
         // move signed files back and rebuild TweakInfo.plist
         tweakSignInfo.removeAllObjects()
-        tweakSignInfo["expirationDate"] = expirationDate2
         var fileInodes = [String:NSNumber]()
         for tmpFile in tmpPaths {
             let toPath = tweakFolderUrl.appendingPathComponent(tmpFile.lastPathComponent)
@@ -808,16 +782,15 @@ extension LCUtils {
                 
                 onServerMessage?("Contacting SideJITServer at \(sideJITServerAddress)...")
                 let request = URLRequest(url: launchJITUrl)
-                let (data, _) = try await session.asyncRequest(request: request)
-                if let data {
-                    onServerMessage?(String(decoding: data, as: UTF8.self))
-                }
+                let (data, _) = try await session.data(for: request)
+                onServerMessage?(String(decoding: data, as: UTF8.self))
+                
             } catch {
                 onServerMessage?("Failed to contact SideJITServer: \(error)")
             }
             
             return false
-        } else if (jitEnabler == .JITStreamerEB) {
+        } else if (jitEnabler == .JITStreamerEB || jitEnabler == .JITStreamerEBLegacy) {
             var JITStresmerEBAddress = groupUserDefaults.string(forKey: "LCSideJITServerAddress") ?? ""
             if JITStresmerEBAddress.isEmpty {
                 JITStresmerEBAddress = "http://[fd00::]:9172"
@@ -838,11 +811,7 @@ extension LCUtils {
                 
                 // check mount status
                 onServerMessage?("Checking mount status...")
-                let (mountData, _) = try await session.asyncRequest(request: mountRequest)
-                guard let mountData else {
-                    onServerMessage?("Failed to mount status from server!")
-                    return false
-                }
+                let (mountData, _) = try await session.data(for: mountRequest)
                 let mountResponseObj = try decoder.decode(JITStreamerEBMountResponse.self, from: mountData)
                 guard mountResponseObj.ok else {
                     onServerMessage?(mountResponseObj.error ?? "Mounting failed with unknown error.")
@@ -857,60 +826,20 @@ extension LCUtils {
                     return false
                 }
                 
-                // send launch_app request
-                let launchJITUrlStr = "\(JITStresmerEBAddress)/launch_app/\(Bundle.main.bundleIdentifier ?? "")"
-                guard let launchJITUrl = URL(string: launchJITUrlStr) else { return false }
-
-                
-                onServerMessage?("Sending launch request...")
-                let request1 = URLRequest(url: launchJITUrl)
-                let (data, _) = try await session.asyncRequest(request: request1)
-                
-
-                guard let data else {
-                    onServerMessage?("Failed to retrieve data from server!")
+                if jitEnabler == .JITStreamerEB {
+                    // relaunch and let the tweakload to do the attatch request
+                    return true
+                } else {
+                    // open safari to use /launch_app api
+                    if let mountStatusUrl = URL(string: "\(JITStresmerEBAddress)/launch_app/\(Bundle.main.bundleIdentifier!)") {
+                        onServerMessage?("JIT acquisition will continue in the default browser.")
+                        await UIApplication.shared.open(mountStatusUrl)
+                    }
                     return false
                 }
-                let launchAppResponse = try decoder.decode(JITStreamerEBLaunchAppResponse.self, from: data)
-                
-                guard launchAppResponse.ok else {
-                    onServerMessage?(launchAppResponse.error ?? "JIT enabling failed with unknown error.")
-                    return false
-                }
-                
-                onServerMessage?("Your app will launch soon! You are position \(launchAppResponse.position ?? -1) in the queue.")
-                
-                // start polling status
-                let statusUrlStr = "\(JITStresmerEBAddress)/status"
-                guard let statusUrl = URL(string: statusUrlStr) else { return false }
-                let maxTries = 20
-                for i in 0..<maxTries {
-                    if Task.isCancelled {
-                        return false
-                    }
-                    
-                    let request2 = URLRequest(url: statusUrl)
-                    let (data, _) = try await session.asyncRequest(request: request2)
-                    guard let data else {
-                        onServerMessage?("Failed to retrieve data from server!")
-                        return false
-                    }
-                    let statusResponse = try decoder.decode(JITStreamerEBStatusResponse.self, from: data)
-                    guard statusResponse.ok else {
-                        onServerMessage?(statusResponse.error ?? "JIT enabling failed with unknown error.")
-                        return false
-                    }
-                    if statusResponse.done {
-                        onServerMessage?("Server done.")
-                        return true
-                    }
-
-                    onServerMessage?("Your app will launch soon! You are position \(launchAppResponse.position ?? -1) in the queue. (Attempt \(i + 1)/\(maxTries))")
-                }
-                
 
             } catch {
-                onServerMessage?("Failed to contact SideJITServer: \(error)")
+                onServerMessage?("Failed to contact JitStreamer-EB server: \(error)")
             }
             
 

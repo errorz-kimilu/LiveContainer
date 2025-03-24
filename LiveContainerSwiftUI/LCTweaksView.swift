@@ -333,7 +333,7 @@ struct LCTweakFolderView : View {
                 }
                 let toPath = self.baseUrl.appendingPathComponent(fileUrl.lastPathComponent)
                 try fm.moveItem(at: fileUrl, to: toPath)
-                LCParseMachO((toPath.path as NSString).utf8String) { path, header in
+                LCParseMachO((toPath.path as NSString).utf8String, false) { path, header, _, _ in
                     LCPatchAddRPath(path, header);
                 }
 
