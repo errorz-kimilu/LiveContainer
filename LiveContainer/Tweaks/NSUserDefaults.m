@@ -10,6 +10,10 @@
 #import "utils.h"
 #import "LCSharedUtils.h"
 
+BOOL hook_return_false() {
+    return NO;
+}
+
 void swizzle(Class class, SEL originalAction, SEL swizzledAction) {
     method_exchangeImplementations(class_getInstanceMethod(class, originalAction), class_getInstanceMethod(class, swizzledAction));
 }
@@ -17,6 +21,11 @@ void swizzle(Class class, SEL originalAction, SEL swizzledAction) {
 NSMutableDictionary* LCPreferences = 0;
 
 void NUDGuestHooksInit() {
+    // fix for macOS host
+    if(access("/Users", F_OK) == 0) {
+        method_setImplementation(class_getInstanceMethod(NSClassFromString(@"CFPrefsPlistSource"), @selector(_isSharedInTheiOSSimulator)), (IMP)hook_return_false);
+    }
+    
     swizzle(NSUserDefaults.class, @selector(objectForKey:), @selector(hook_objectForKey:));
     swizzle(NSUserDefaults.class, @selector(boolForKey:), @selector(hook_boolForKey:));
     swizzle(NSUserDefaults.class, @selector(integerForKey:), @selector(hook_integerForKey:));

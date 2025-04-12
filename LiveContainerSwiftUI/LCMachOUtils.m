@@ -71,7 +71,7 @@ void LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doIn
     const char *tweakLoaderPath = "@loader_path/../../Tweaks/TweakLoader.dylib";
     const char *libCppPath = "/usr/lib/libc++.1.dylib";
     struct load_command *command = (struct load_command *)imageHeaderPtr;
-    for(int i = 0; i < header->ncmds > 0; i++) {
+    for(int i = 0; i < header->ncmds; i++) {
         if(command->cmd == LC_ID_DYLIB) {
             hasDylibCommand = YES;
         } else if(command->cmd == LC_LOAD_DYLIB) {
@@ -133,7 +133,7 @@ NSString *LCParseMachO(const char *path, bool readOnly, LCParseMachOCallback cal
 void LCChangeExecUUID(struct mach_header_64 *header) {
     uint8_t *imageHeaderPtr = (uint8_t*)header + sizeof(struct mach_header_64);
     struct load_command *command = (struct load_command *)imageHeaderPtr;
-    for(int i = 0; i < header->ncmds > 0; i++) {
+    for(int i = 0; i < header->ncmds; i++) {
         if(command->cmd == LC_UUID) {
             struct uuid_command *uuidCmd = (struct uuid_command *)command;
             // let's add the first byte by 1
@@ -151,7 +151,7 @@ void LCPatchAltStore(const char *path, struct mach_header_64 *header) {
          hasLoaderCommand = NO;
     
     struct load_command *command = (struct load_command *)imageHeaderPtr;
-    for(int i = 0; i < header->ncmds > 0; i++) {
+    for(int i = 0; i < header->ncmds; i++) {
         if(command->cmd == LC_LOAD_DYLIB) {
             struct dylib_command *dylib = (struct dylib_command *)command;
             char *dylibName = (void *)dylib + dylib->dylib.name.offset;
@@ -199,7 +199,7 @@ struct code_signature_command* findSignatureCommand(struct mach_header_64* heade
     uint8_t *imageHeaderPtr = (uint8_t*)header + sizeof(struct mach_header_64);
     struct load_command *command = (struct load_command *)imageHeaderPtr;
     struct code_signature_command* codeSignCommand = 0;
-    for(int i = 0; i < header->ncmds > 0; i++) {
+    for(int i = 0; i < header->ncmds; i++) {
         if(command->cmd == LC_CODE_SIGNATURE) {
             codeSignCommand = (struct code_signature_command*)command;
             break;

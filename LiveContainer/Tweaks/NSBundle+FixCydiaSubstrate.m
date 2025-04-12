@@ -17,7 +17,7 @@
     CFURLRef url = (__bridge CFURLRef)[NSURL fileURLWithPath:path.lc_realpath];
     id cfBundle = CFBridgingRelease(CFBundleCreate(NULL, url));
     if(!cfBundle) return nil;
-    self = [self init];
+    self = [self initWithPath:path];
     object_setIvar(self, class_getInstanceVariable(self.class, "_cfBundle"), cfBundle);
     return self;
 }

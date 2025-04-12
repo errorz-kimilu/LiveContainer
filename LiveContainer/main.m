@@ -14,7 +14,7 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 #include "TPRO.h"
-#import "fishhook/fishhook.h"
+#import "../fishhook/fishhook.h"
 #import "Tweaks/Tweaks.h"
 #include <mach-o/ldsyms.h>
 
@@ -49,6 +49,11 @@ NSDictionary* guestAppInfo;
 @end
 
 static BOOL checkJITEnabled() {
+    // check if running on macOS
+    if (access("/Users", R_OK) == 0) {
+        return YES;
+    }
+    
     if([lcUserDefaults boolForKey:@"LCIgnoreJITOnLaunch"]) {
         return NO;
     }
@@ -413,7 +418,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     uint32_t appIndex = _dyld_image_count();
     appMainImageIndex = appIndex;
     
-    DyldHooksInit([guestAppInfo[@"hideLiveContainer"] boolValue]);
+    DyldHooksInit([guestAppInfo[@"hideLiveContainer"] boolValue], [guestAppInfo[@"spoofSDKVersion"] unsignedIntValue]);
     
     bool is32bit = [guestAppInfo[@"is32bit"] boolValue];
     if(is32bit) {
@@ -639,6 +644,12 @@ int LiveContainerMain(int argc, char *argv[]) {
 
 // fake main() used for dlsym(RTLD_DEFAULT, main)
 int main(int argc, char *argv[]) {
+#ifdef DEBUG
+    if(appMain == NULL) {
+        return LiveContainerMain(argc, argv);
+    }
+#else
     assert(appMain != NULL);
+#endif
     return appMain(argc, argv);
 }

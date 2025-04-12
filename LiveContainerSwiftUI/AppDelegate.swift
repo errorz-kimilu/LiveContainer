@@ -72,6 +72,7 @@ import SwiftUI
         window.makeKeyAndVisible()
         application.shortcutItems = nil
         UserDefaults.standard.removeObject(forKey: "LCNeedToAcquireJIT")
+        UserDefaults.standard.register(defaults: ["LCDefaultSigner": Signer.ZSign.rawValue])
         return true
     }
     
@@ -81,7 +82,7 @@ import SwiftUI
             return true
         }
         
-        if url.host == "open-web-page" {
+        if url.host == "open-web-page" || url.host == "open-url" {
             if let urlComponent = URLComponents(url: url, resolvingAgainstBaseURL: false), let queryItem = urlComponent.queryItems?.first {
                 if queryItem.value?.isEmpty ?? true {
                     return true
@@ -126,7 +127,7 @@ import SwiftUI
     
     func applicationWillTerminate(_ application: UIApplication) {
         // Fix launching app if user opens JIT waiting dialog and kills the app. Won't trigger normally.
-        if DataManager.shared.model.isJITModalOpen {
+        if DataManager.shared.model.isJITModalOpen && !UserDefaults.standard.bool(forKey: "LCKeepSelectedWhenQuit"){
             UserDefaults.standard.removeObject(forKey: "selected")
             UserDefaults.standard.removeObject(forKey: "selectedContainer")
         }

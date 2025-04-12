@@ -82,7 +82,7 @@ static bool searchAndPatch(char *name, char *base, char *signature, int length, 
     return redirectFunction(name, patchAddr, target);
 }
 
-static struct dyld_all_image_infos *_alt_dyld_get_all_image_infos() {
+static struct dyld_all_image_infos *_alt_dyld_get_all_image_infos(void) {
     static struct dyld_all_image_infos *result;
     if (result) {
         return result;
@@ -103,7 +103,7 @@ static struct dyld_all_image_infos *_alt_dyld_get_all_image_infos() {
     return result;
 }
 
-static void *getDyldBase(void) {
+void *getDyldBase(void) {
     return (void *)_alt_dyld_get_all_image_infos()->dyldImageLoadAddress;
 }
 

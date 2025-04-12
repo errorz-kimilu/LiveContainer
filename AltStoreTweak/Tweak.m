@@ -30,7 +30,7 @@ static void LCAltstoreHookInit(void) {
     if (synced) {
         return;
     }
-    NSLog(@"[LC] LiveContainer AltStore Tweak build %s", CONFIG_COMMIT);
+    NSLog(@"[LC] LiveContainer AltStore Tweak init!");
     NSString* bundleId = [NSBundle.mainBundle bundleIdentifier];
     NSString* serviceName;
     NSArray<NSString*>* appGroups = [NSBundle.mainBundle.infoDictionary objectForKey:@"ALTAppGroups"];

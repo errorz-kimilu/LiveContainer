@@ -91,6 +91,12 @@ class LCAppModel: ObservableObject, Hashable {
         }
     }
     
+    @Published var uiSpoofSDKVersion : Bool {
+        didSet {
+            appInfo.spoofSDKVersion = uiSpoofSDKVersion
+        }
+    }
+    
     @Published var supportedLanaguages : [String]?
     
     var jitAlert : YesNoHelper? = nil
@@ -124,6 +130,7 @@ class LCAppModel: ObservableObject, Hashable {
         self.uiDontInjectTweakLoader = appInfo.dontInjectTweakLoader
         self.uiDontLoadTweakLoader = appInfo.dontLoadTweakLoader
         self.uiDontSign = appInfo.dontSign
+        self.uiSpoofSDKVersion = appInfo.spoofSDKVersion
         
         self.uiIs32bit = appInfo.is32bit
         
@@ -293,12 +300,6 @@ class LCAppModel: ObservableObject, Hashable {
                   let jitEnabler = JITEnablerType(rawValue: groupUserDefaults.integer(forKey: "LCJITEnablerType")) else {
                 return
             }
-            
-            if jitEnabler == .JITStreamerEB && enableResult{
-                UserDefaults.standard.set(true, forKey: "LCNeedToAcquireJIT")
-                LCUtils.launchToGuestApp()
-            }
-
         }
         guard let result = await jitAlert?.open(), result else {
             UserDefaults.standard.removeObject(forKey: "selected")

@@ -445,9 +445,12 @@ BOOL canAppOpenItself(NSURL* url) {
         } else {
             NSMutableSet *newActions = actions.mutableCopy;
             [newActions removeObject:urlAction];
-            UIOpenURLAction *newUrlAction = [[UIOpenURLAction alloc] initWithURL:[NSURL URLWithString:decodedUrl]];
-            [newActions addObject:newUrlAction];
-            [self hook_scene:scene didReceiveActions:newActions fromTransitionContext:context];
+            NSURL* finalURL = [NSURL URLWithString:decodedUrl];
+            if(finalURL) {
+                UIOpenURLAction *newUrlAction = [[UIOpenURLAction alloc] initWithURL:finalURL];
+                [newActions addObject:newUrlAction];
+                [self hook_scene:scene didReceiveActions:newActions fromTransitionContext:context];
+            }
         }
 
     } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://livecontainer-launch?bundle-name=", NSUserDefaults.lcAppUrlScheme]]){

@@ -9,7 +9,8 @@ int _NSGetExecutablePath(char* buf, uint32_t* bufsize);
 #define CS_DEBUGGED 0x10000000
 int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
 
-void init_bypassDyldLibValidation();
+void *getDyldBase(void);
+void init_bypassDyldLibValidation(void);
 kern_return_t builtin_vm_protect(mach_port_name_t task, mach_vm_address_t address, mach_vm_size_t size, boolean_t set_max, vm_prot_t new_prot);
 
 uint64_t aarch64_get_tbnz_jump_address(uint32_t instruction, uint64_t pc);

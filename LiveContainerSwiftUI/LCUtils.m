@@ -3,9 +3,8 @@
 @import UIKit;
 @import UniformTypeIdentifiers;
 
-#import "../AltStoreCore/ALTSigner.h"
+#import "../LiveContainer/AltStoreCore/ALTSigner.h"
 #import "LCUtils.h"
-#import "LCVersionInfo.h"
 #import "../ZSign/zsigner.h"
 
 Class LCSharedUtilsClass = nil;
@@ -102,7 +101,17 @@ Class LCSharedUtilsClass = nil;
     static BOOL loaded = NO;
     if (loaded) return;
 
-    dlopen("@executable_path/Frameworks/ZSign.dylib", RTLD_GLOBAL);
+    void* handle = dlopen("@executable_path/Frameworks/ZSign.dylib", RTLD_GLOBAL);
+    const char* dlerr = dlerror();
+    if (!handle || (uint64_t)handle > 0xf00000000000) {
+        if (dlerr) {
+            *error = [NSError errorWithDomain:NSBundle.mainBundle.bundleIdentifier code:1 userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Failed to load ZSign: %s", dlerr]}];
+        } else {
+            *error = [NSError errorWithDomain:NSBundle.mainBundle.bundleIdentifier code:1 userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Failed to load ZSign: An unknown error occurred."]}];
+        }
+        NSLog(@"[LC] %s", dlerr);
+        return;
+    }
     
     loaded = YES;
 }
@@ -252,6 +261,18 @@ Class LCSharedUtilsClass = nil;
             ans = SideStore;
         } else if ([UTType typeWithIdentifier:[NSString stringWithFormat:@"io.altstore.Installed.%@", NSBundle.mainBundle.bundleIdentifier]]) {
             ans = AltStore;
+        } else {
+            ans = Unknown;
+        }
+        
+        if(ans != Unknown) {
+            return;
+        }
+        
+        if([[self appGroupID] containsString:@"AltStore"]) {
+            ans = AltStore;
+        } else if ([[self appGroupID] containsString:@"SideStore"]) {
+            ans = SideStore;
         } else {
             ans = Unknown;
         }
@@ -414,6 +435,11 @@ Class LCSharedUtilsClass = nil;
 
     [manager removeItemAtURL:tmpPath error:error];
     if (*error) return nil;
+    
+    if([manager fileExistsAtPath:tmpIPAPath.path]) {
+        [manager removeItemAtURL:tmpIPAPath error:error];
+        if (*error) return nil;
+    }
 
     [zipData writeToURL:tmpIPAPath options:0 error:error];
     if (*error) return nil;
@@ -448,6 +474,10 @@ Class LCSharedUtilsClass = nil;
     NSURL *tmpPayloadPath = [tmpPath URLByAppendingPathComponent:@"Payload"];
     NSURL *tmpIPAPath = [appGroupPath URLByAppendingPathComponent:@"tmp.ipa"];
 
+    if([manager fileExistsAtPath:tmpPath.path]) {
+        [manager removeItemAtURL:tmpPath error:error];
+        if (*error) return nil;
+    }
     [manager createDirectoryAtURL:tmpPath withIntermediateDirectories:YES attributes:nil error:error];
     if (*error) return nil;
 
@@ -488,6 +518,10 @@ Class LCSharedUtilsClass = nil;
     [manager removeItemAtURL:tmpPath error:error];
     if (*error) return nil;
 
+    if([manager fileExistsAtPath:tmpIPAPath.path]) {
+        [manager removeItemAtURL:tmpIPAPath error:error];
+        if (*error) return nil;
+    }
     [zipData writeToURL:tmpIPAPath options:0 error:error];
     if (*error) return nil;
 
@@ -495,7 +529,9 @@ Class LCSharedUtilsClass = nil;
 }
 
 + (NSString *)getVersionInfo {
-    return [NSClassFromString(@"LCVersionInfo") getVersionStr];
+    return [NSString stringWithFormat:@"Version %@-%@",
+            NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"],
+            NSBundle.mainBundle.infoDictionary[@"LCVersionInfo"]];
 }
 
 @end

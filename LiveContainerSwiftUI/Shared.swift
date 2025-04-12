@@ -790,7 +790,7 @@ extension LCUtils {
             }
             
             return false
-        } else if (jitEnabler == .JITStreamerEB || jitEnabler == .JITStreamerEBLegacy) {
+        } else if (jitEnabler == .JITStreamerEBLegacy) {
             var JITStresmerEBAddress = groupUserDefaults.string(forKey: "LCSideJITServerAddress") ?? ""
             if JITStresmerEBAddress.isEmpty {
                 JITStresmerEBAddress = "http://[fd00::]:9172"
@@ -826,17 +826,13 @@ extension LCUtils {
                     return false
                 }
                 
-                if jitEnabler == .JITStreamerEB {
-                    // relaunch and let the tweakload to do the attatch request
-                    return true
-                } else {
-                    // open safari to use /launch_app api
-                    if let mountStatusUrl = URL(string: "\(JITStresmerEBAddress)/launch_app/\(Bundle.main.bundleIdentifier!)") {
-                        onServerMessage?("JIT acquisition will continue in the default browser.")
-                        await UIApplication.shared.open(mountStatusUrl)
-                    }
-                    return false
+                // open safari to use /launch_app api
+                if let mountStatusUrl = URL(string: "\(JITStresmerEBAddress)/launch_app/\(Bundle.main.bundleIdentifier!)") {
+                    onServerMessage?("JIT acquisition will continue in the default browser.")
+                    await UIApplication.shared.open(mountStatusUrl)
                 }
+                return false
+                
 
             } catch {
                 onServerMessage?("Failed to contact JitStreamer-EB server: \(error)")
@@ -844,6 +840,32 @@ extension LCUtils {
             
 
 
+        } else if jitEnabler == .StkiJIT || jitEnabler == .StikJITLC{
+            let launchURLStr = "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)"
+            let launchURL : URL
+            if jitEnabler == .StikJITLC {
+                let encodedStr = Data(launchURLStr.utf8).base64EncodedString()
+                switch DataManager.shared.model.multiLCStatus {
+                case 0:
+                    onServerMessage?("Another LiveContainer is not installed. Please choose another method to enable JIT.")
+                    return false;
+                case 1:
+                    launchURL = URL(string: "livecontainer2://open-url?url=\(encodedStr)")!
+                    break
+                case 2:
+                    launchURL = URL(string: "livecontainer://open-url?url=\(encodedStr)")!
+                    break
+                default:
+                    onServerMessage?("Unable to determine multiple LiveContainer status. This should not happen.")
+                    return false
+                }
+                onServerMessage?("JIT acquisition will continue in another LiveContainer.")
+                
+            } else {
+                launchURL = URL(string: launchURLStr)!
+                onServerMessage?("JIT acquisition will continue in StikJIT.")
+            }
+            await UIApplication.shared.open(launchURL)
         }
         return false
     }

@@ -6,6 +6,8 @@
 #import "LCAppInfo.h"
 #import "LCUtils.h"
 
+uint32_t dyld_get_sdk_version(const struct mach_header* mh);
+
 @implementation LCAppInfo
 - (instancetype)initWithBundlePath:(NSString*)bundlePath {
     self = [super init];
@@ -264,8 +266,9 @@
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         // Remove faulty file
         [NSFileManager.defaultManager removeItemAtURL:[bundleURL URLByAppendingPathComponent:@"LiveContainer"] error:nil];
+        // we keep the Plugins folder in case some apps need resources in it
         // Remove PlugIns folder
-        [NSFileManager.defaultManager removeItemAtURL:[bundleURL URLByAppendingPathComponent:@"PlugIns"] error:nil];
+        // [NSFileManager.defaultManager removeItemAtURL:[bundleURL URLByAppendingPathComponent:@"PlugIns"] error:nil];
         // Remove code signature from all library files
         if([self signer] == AltSign) {
             [LCUtils removeCodeSignatureFromBundleURL:bundleURL];
@@ -648,5 +651,27 @@
     
 }
 
+- (bool)spoofSDKVersion {
+    if(!_info[@"spoofSDKVersion"]) {
+        return false;
+    } else {
+        return [_info[@"spoofSDKVersion"] unsignedIntValue] != 0;
+    }
+}
+
+- (void)setSpoofSDKVersion:(bool)doSpoof {
+    if(!doSpoof) {
+        _info[@"spoofSDKVersion"] = 0;
+    } else {
+        NSString *execPath = [NSString stringWithFormat:@"%@/%@", _bundlePath, _infoPlist[@"CFBundleExecutable"]];
+        __block uint32_t sdkVersion = 0;
+        LCParseMachO(execPath.UTF8String, true, ^(const char *path, struct mach_header_64 *header, int fd, void *filePtr) {
+            sdkVersion = dyld_get_sdk_version((const struct mach_header *)header);
+        });
+        NSLog(@"[LC] sdkversion = %8x", sdkVersion);
+        _info[@"spoofSDKVersion"] = [NSNumber numberWithUnsignedInt:sdkVersion];
+    }
+    [self save];
+}
 
 @end

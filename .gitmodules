@@ -1,3 +1,6 @@
 [submodule "fishhook"]
 	path = fishhook
 	url = https://github.com/khanhduytran0/fishhook
+[submodule "OpenSSL"]
+	path = OpenSSL
+	url = https://github.com/krzyzanowskim/OpenSSL

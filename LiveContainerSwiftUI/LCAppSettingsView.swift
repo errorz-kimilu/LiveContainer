@@ -261,6 +261,14 @@ struct LCAppSettingsView : View{
             } footer: {
                 Text("lc.appSettings.hideLiveContainerDesc".loc)
             }
+            
+            Section {
+                Toggle(isOn: $model.uiSpoofSDKVersion) {
+                    Text("lc.appSettings.spoofSDKVersion".loc)
+                }
+            } footer: {
+                Text("lc.appSettings.fspoofSDKVersionDesc".loc)
+            }
 
             
             Section {

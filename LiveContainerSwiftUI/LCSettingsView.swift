@@ -16,8 +16,9 @@ enum PatchChoice {
 
 enum JITEnablerType : Int {
     case SideJITServer = 0
-    case JITStreamerEB = 1
+    case StkiJIT = 1
     case JITStreamerEBLegacy = 2
+    case StikJITLC = 3
 }
 
 struct LCSettingsView: View {
@@ -59,6 +60,7 @@ struct LCSettingsView: View {
     @AppStorage("LCLoadTweaksToSelf") var injectToLCItelf = false
     @AppStorage("LCIgnoreJITOnLaunch") var ignoreJITOnLaunch = false
     @AppStorage("selected32BitLayer") var liveExec32Path : String = ""
+    @AppStorage("LCKeepSelectedWhenQuit") var keepSelectedWhenQuit = false
     
     @EnvironmentObject private var sharedModel : SharedModel
     
@@ -158,11 +160,13 @@ struct LCSettingsView: View {
                     }
                 }
                 Section {
-                    HStack {
-                        Text("lc.settings.JitAddress".loc)
-                        Spacer()
-                        TextField(JITEnabler == .SideJITServer ? "http://x.x.x.x:8080" : "http://[fd00::]:9172", text: $sideJITServerAddress)
-                            .multilineTextAlignment(.trailing)
+                    if JITEnabler == .SideJITServer || JITEnabler == .JITStreamerEBLegacy {
+                        HStack {
+                            Text("lc.settings.JitAddress".loc)
+                            Spacer()
+                            TextField(JITEnabler == .SideJITServer ? "http://x.x.x.x:8080" : "http://[fd00::]:9172", text: $sideJITServerAddress)
+                                .multilineTextAlignment(.trailing)
+                        }
                     }
                     if JITEnabler == .SideJITServer {
                         HStack {
@@ -174,7 +178,8 @@ struct LCSettingsView: View {
                     }
                     Picker(selection: $JITEnabler) {
                         Text("SideJITServer/JITStreamer 2.0").tag(JITEnablerType.SideJITServer)
-                        Text("JitStreamer-EB (Attach)").tag(JITEnablerType.JITStreamerEB)
+                        Text("StikJIT (StandAlone)").tag(JITEnablerType.StkiJIT)
+                        Text("StikJIT (Another LiveContainer)").tag(JITEnablerType.StikJITLC)
                         Text("JitStreamer-EB (Relaunch)").tag(JITEnablerType.JITStreamerEBLegacy)
                     } label: {
                         Text("lc.settings.jitEnabler".loc)
@@ -315,10 +320,18 @@ struct LCSettingsView: View {
                         Toggle(isOn: $ignoreJITOnLaunch) {
                             Text("Ignore JIT on Launching App")
                         }
+                        Toggle(isOn: $keepSelectedWhenQuit) {
+                            Text("Keep Selected App when Quit")
+                        }
                         Button {
                             export()
                         } label: {
                             Text("Export Cert")
+                        }
+                        Button {
+                            Task { await nukeSideStore() }
+                        } label: {
+                            Text("Nuke SideStore")
                         }
                         Button {
                             exportMainExecutable()
@@ -842,5 +855,19 @@ struct LCSettingsView: View {
         UserDefaults.standard.set(nil, forKey: "LCCertificateData")
         UserDefaults.standard.set(nil, forKey: "LCCertificateTeamId")
         sharedModel.certificateImported = false
+    }
+    
+    func nukeSideStore() async {
+        guard let doRemove = await certificateRemoveAlert.open(), doRemove else {
+            return
+        }
+        do {
+            let fm = FileManager.default
+            let sidestoreAppGroupURL = LCPath.lcGroupDocPath.deletingLastPathComponent()
+            try fm.removeItem(at: sidestoreAppGroupURL.appendingPathComponent("Database"))
+            try fm.removeItem(at: sidestoreAppGroupURL.appendingPathComponent("Apps"))
+        } catch {
+            print("wtf \(error)")
+        }
     }
 }

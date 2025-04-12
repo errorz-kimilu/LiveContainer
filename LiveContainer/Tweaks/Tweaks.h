@@ -10,7 +10,7 @@ void swizzle(Class class, SEL originalAction, SEL swizzledAction);
 
 void NUDGuestHooksInit(void);
 void SecItemGuestHooksInit(void);
-void DyldHooksInit(bool hideLiveContainer);
+void DyldHooksInit(bool hideLiveContainer, uint32_t spoofSDKVersion);
 void NSFMGuestHooksInit(void);
 
 @interface NSBundle(LiveContainer)

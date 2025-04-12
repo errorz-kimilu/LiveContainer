@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1540"
+   LastUpgradeVersion = "1620"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "17B9B88C2C760678009D079E"
-               BuildableName = "LiveContainerSwiftUI.app"
+               BlueprintIdentifier = "17413FB42D9C0BAE00F3F928"
+               BuildableName = "LiveContainerSwiftUI.framework"
                BlueprintName = "LiveContainerSwiftUI"
-               ReferencedContainer = "container:LiveContainerSwiftUI.xcodeproj">
+               ReferencedContainer = "container:LiveContainer.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -40,16 +40,6 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "17B9B88C2C760678009D079E"
-            BuildableName = "LiveContainerSwiftUI.app"
-            BlueprintName = "LiveContainerSwiftUI"
-            ReferencedContainer = "container:LiveContainerSwiftUI.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -57,16 +47,15 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "17B9B88C2C760678009D079E"
-            BuildableName = "LiveContainerSwiftUI.app"
+            BlueprintIdentifier = "17413FB42D9C0BAE00F3F928"
+            BuildableName = "LiveContainerSwiftUI.framework"
             BlueprintName = "LiveContainerSwiftUI"
-            ReferencedContainer = "container:LiveContainerSwiftUI.xcodeproj">
+            ReferencedContainer = "container:LiveContainer.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

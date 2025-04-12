@@ -66,6 +66,7 @@ struct LCAppBanner : View {
                         if model.uiIsShared {
                             Image(systemName: "arrowshape.turn.up.left.fill")
                                 .font(.system(size: 8))
+                                .foregroundColor(.white)
                                 .frame(width: 16, height:16)
                                 .background(
                                     Capsule().fill(Color("BadgeColor"))
@@ -74,6 +75,7 @@ struct LCAppBanner : View {
                         if model.uiIsJITNeeded {
                             Image(systemName: "bolt.fill")
                                 .font(.system(size: 8))
+                                .foregroundColor(.white)
                                 .frame(width: 16, height:16)
                                 .background(
                                     Capsule().fill(Color("JITBadgeColor"))
@@ -82,6 +84,7 @@ struct LCAppBanner : View {
                         if model.uiIs32bit {
                             Text("32")
                                 .font(.system(size: 8))
+                                .foregroundColor(.white)
                                 .frame(width: 16, height:16)
                                 .background(
                                     Capsule().fill(Color("32BitBadgeColor"))
@@ -90,6 +93,7 @@ struct LCAppBanner : View {
                         if model.uiIsLocked && !model.uiIsHidden {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 8))
+                                .foregroundColor(.white)
                                 .frame(width: 16, height:16)
                                 .background(
                                     Capsule().fill(Color("BadgeColor"))
@@ -107,6 +111,9 @@ struct LCAppBanner : View {
             } label: {
                 if !model.isSigningInProgress {
                     Text("lc.appBanner.run".loc).bold().foregroundColor(.white)
+                        .lineLimit(1)
+                        .frame(height:32)
+                        .minimumScaleFactor(0.1)
                 } else {
                     ProgressView().progressViewStyle(.circular)
                 }
