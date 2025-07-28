@@ -24,10 +24,11 @@ struct LCSettingsView: View {
     
     @Binding var appDataFolderNames: [String]
 
-    @StateObject private var installLC2Alert = YesNoHelper()
+    @StateObject private var installLC2Alert = AlertHelper<Int>()
     @State private var certificateDataFound = false
     
     @StateObject private var certificateImportAlert = YesNoHelper()
+    @StateObject private var certificateImportFromBuiltInSideStoreAlert = YesNoHelper()
     @StateObject private var certificateRemoveAlert = YesNoHelper()
     @StateObject private var certificateImportFileAlert = AlertHelper<URL>()
     @StateObject private var certificateImportPasswordAlert = InputHelper()
@@ -377,14 +378,22 @@ struct LCSettingsView: View {
                 Text(successInfo)
             }
             .alert("lc.settings.multiLCInstall".loc, isPresented: $installLC2Alert.show) {
+                if(UserDefaults.sideStoreExist()) {
+                    Button {
+                        installLC2Alert.close(result: 2)
+                    } label: {
+                        Text("lc.settings.multiLCInstall.installWithBuiltInSideStore".loc)
+                    }
+                }
+                
                 Button {
-                    installLC2Alert.close(result: true)
+                    installLC2Alert.close(result: 1)
                 } label: {
                     Text("lc.common.continue".loc)
                 }
 
                 Button("lc.common.cancel".loc, role: .cancel) {
-                    installLC2Alert.close(result: false)
+                    installLC2Alert.close(result: 0)
                 }
             } message: {
                 Text("lc.settings.multiLCInstallAlertDesc %@".localizeWithFormat(storeName))
@@ -414,6 +423,18 @@ struct LCSettingsView: View {
                 }
             } message: {
                 Text("lc.settings.removeCertificateDesc".loc)
+            }
+            .alert("lc.settings.importCertFromBuiltinSideStore".loc, isPresented: $certificateImportFromBuiltInSideStoreAlert.show) {
+                Button {
+                    certificateImportFromBuiltInSideStoreAlert.close(result: true)
+                } label: {
+                    Text("lc.common.ok".loc)
+                }
+                Button("lc.common.cancel".loc, role: .cancel) {
+                    certificateImportFromBuiltInSideStoreAlert.close(result: false)
+                }
+            } message: {
+                Text("lc.settings.importCertFromBuiltinSideStoreDesc".loc)
             }
             .betterFileImporter(isPresented: $certificateImportFileAlert.show, types: [.p12], multiple: false, callback: { fileUrls in
                 certificateImportFileAlert.close(result: fileUrls[0])
@@ -452,7 +473,7 @@ struct LCSettingsView: View {
             return;
         }
         
-        guard let result = await installLC2Alert.open(), result else {
+        guard let result = await installLC2Alert.open(), result != 0 else {
             return
         }
         
@@ -460,6 +481,14 @@ struct LCSettingsView: View {
             let packedIpaUrl = try LCUtils.archiveIPA(withBundleName: "LiveContainer2")
             
             shareURL = packedIpaUrl
+            
+            if(result == 2) {
+                let launchURLStr = packedIpaUrl.absoluteString
+                UserDefaults.standard.setValue(launchURLStr, forKey: "launchAppUrlScheme")
+                LCUtils.openSideStore()
+                return
+            }
+            
             showShareSheet = true
             
         } catch {
@@ -575,6 +604,42 @@ struct LCSettingsView: View {
     }
     
     func importCertificateFromSideStore() async {
+        if UserDefaults.sideStoreExist() {
+            if let ans = await certificateImportFromBuiltInSideStoreAlert.open(), ans {
+                let query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "signingCertificate",
+                    kSecReturnData as String: true,
+                    kSecMatchLimit as String: kSecMatchLimitOne,
+                    kSecAttrService as String: "com.kdt.livecontainer",
+                    kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
+                ]
+                
+                var item: CFTypeRef?
+                let status = SecItemCopyMatching(query as CFDictionary, &item)
+                
+                guard status == errSecSuccess else {
+                    if status == errSecItemNotFound {
+                        errorInfo = "lc.settings.importCertFromBuiltinSideStore.certNotFounndErr".loc
+                        errorShow = true
+                    } else {
+                        errorInfo = "Keychain read error: \(status)"
+                        errorShow = true
+                    }
+                    return
+                }
+                
+                guard let data = item as? Data else {
+                    errorInfo = "Failed to decode password data"
+                    errorShow = true
+                    return
+                }
+                onSideStoreCertificateCallback(certificateData: data, password: "")
+                
+                return
+            }
+        }
+        
         let storeScheme : String
         if store == .AltStore {
             storeScheme = "altstore-classic"

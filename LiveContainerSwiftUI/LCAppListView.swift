@@ -235,9 +235,30 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                     }
                 }
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Help", systemImage: "questionmark") {
-                        helpPresent = true
+                    if(UserDefaults.sideStoreExist()) {
+                        Button {
+                            LCUtils.openSideStore(delegate: self)
+                        } label: {
+                            Image("SideStoreBadge")
+                                .resizable()
+                                .renderingMode(.template)
+                                .foregroundColor({
+                                    if SharedModel.isLiquidGlassEnabled {
+                                        return Color.primary
+                                    } else {
+                                        return Color.accentColor
+                                    }
+                                }())
+                                .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight, height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
+
+                        }
+                    } else {
+                        Button("Help", systemImage: "questionmark") {
+                            helpPresent = true
+                        }
                     }
+                    
+
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -269,7 +290,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             }
                         }
                     } label: {
-                        Label("lc.appList.sort".loc, systemImage: "ellipsis.circle")
+                        Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
                     }
                 }
             }
@@ -367,7 +388,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             handleURL(url: url)
         }
         .apply {
-            if #available(iOS 19.0, *), sharedModel.isLiquidGlassSearchEnabled {
+            if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
                 $0
             } else {
                 $0.searchable(text: $searchContext.query)
@@ -961,6 +982,12 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             return
         }
         
+        if url.scheme == "sidestore" && UserDefaults.sideStoreExist() {
+            UserDefaults.standard.setValue(url.absoluteString, forKey: "launchAppUrlScheme")
+            LCUtils.openSideStore(delegate: self)
+            return
+        }
+        
         if url.host == "open-web-page" || url.host == "open-url" {
             if let urlComponent = URLComponents(url: url, resolvingAgainstBaseURL: false), let queryItem = urlComponent.queryItems?.first {
                 if queryItem.value?.isEmpty ?? true {
@@ -1001,6 +1028,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             }
         }
     }
+    
 }
 
 extension View {

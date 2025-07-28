@@ -22,11 +22,11 @@ typedef struct {
 } dyld_build_version_t;
 
 uint32_t lcImageIndex = 0;
-uint32_t tweakLoaderIndex = 0;
 uint32_t appMainImageIndex = 0;
 void* appExecutableHandle = 0;
 bool tweakLoaderLoaded = false;
 bool appExecutableFileTypeOverwritten = false;
+const char* lcMainBundlePath = NULL;
 
 void* (*orig_dlsym)(void * __handle, const char * __symbol) = dlsym;
 uint32_t (*orig_dyld_image_count)(void) = _dyld_image_count;
@@ -61,30 +61,6 @@ static inline int translateImageIndex(int origin) {
         return appMainImageIndex;
     }
     
-    // find tweakloader index
-    if(tweakLoaderLoaded && tweakLoaderIndex == 0) {
-        const char* tweakloaderPath = [[[[NSUserDefaults lcMainBundle] bundlePath] stringByAppendingPathComponent:@"Frameworks/TweakLoader.dylib"] UTF8String];
-        if(tweakloaderPath) {
-            uint32_t imageCount = orig_dyld_image_count();
-            for(uint32_t i = imageCount - 1; i >= 0; --i) {
-                const char* imgName = orig_dyld_get_image_name(i);
-                if(imgName && strcmp(imgName, tweakloaderPath) == 0) {
-                    tweakLoaderIndex = i;
-                    break;
-                }
-            }
-        }
-
-        if(tweakLoaderIndex == 0) {
-            tweakLoaderIndex = -1; // can't find, don't search again in the future
-        }
-    }
-    
-    if(tweakLoaderLoaded && tweakLoaderIndex > 0 && origin >= tweakLoaderIndex) {
-        return origin + 2;
-    } else if(origin >= appMainImageIndex) {
-        return origin + 1;
-    }
     return origin;
 }
 
@@ -129,6 +105,23 @@ intptr_t hook_dyld_get_image_vmaddr_slide(uint32_t image_index) {
 
 const char* hook_dyld_get_image_name(uint32_t image_index) {
     __attribute__((musttail)) return orig_dyld_get_image_name(translateImageIndex(image_index));
+}
+
+void hideLiveContainerImageCallback(const struct mach_header* header, intptr_t vmaddr_slide) {
+    Dl_info info;
+    dladdr(header, &info);
+    if(!strncmp(info.dli_fname, lcMainBundlePath, strlen(lcMainBundlePath)) || strstr(info.dli_fname, "/procursus/") != 0) {
+        char fakePath[PATH_MAX];
+        snprintf(fakePath, sizeof(fakePath), "/usr/lib/%p.dylib", header);
+        kern_return_t ret = vm_protect(mach_task_self(), (vm_address_t)info.dli_fname, PATH_MAX, false, PROT_READ | PROT_WRITE);
+        if(ret != KERN_SUCCESS) {
+            os_thread_self_restrict_tpro_to_rw();
+        }
+        strcpy((char *)info.dli_fname, fakePath);
+        if(ret != KERN_SUCCESS) {
+            os_thread_self_restrict_tpro_to_ro();
+        }
+    }
 }
 
 void* getCachedSymbol(NSString* symbolName, mach_header_u* header) {
@@ -336,6 +329,11 @@ void DyldHooksInit(bool hideLiveContainer, uint32_t spoofSDKVersion) {
         }
     }
     
+    if(NSUserDefaults.isLiveProcess) {
+        lcMainBundlePath = NSUserDefaults.lcMainBundle.bundlePath.stringByDeletingLastPathComponent.stringByDeletingLastPathComponent.fileSystemRepresentation;
+    } else {
+        lcMainBundlePath = NSUserDefaults.lcMainBundle.bundlePath.fileSystemRepresentation;
+    }
     orig_dyld_get_image_header = _dyld_get_image_header;
     
     // hook dlopen and dlsym to solve RTLD_MAIN_ONLY, hook other functions to hide LiveContainer itself
@@ -345,6 +343,7 @@ void DyldHooksInit(bool hideLiveContainer, uint32_t spoofSDKVersion) {
         litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, _dyld_get_image_header, hook_dyld_get_image_header, nil);
         litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, _dyld_get_image_vmaddr_slide, hook_dyld_get_image_vmaddr_slide, nil);
         litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, _dyld_get_image_name, hook_dyld_get_image_name, nil);
+        _dyld_register_func_for_add_image((void (*)(const struct mach_header *, intptr_t))hideLiveContainerImageCallback);
     }
     
     appExecutableFileTypeOverwritten = !hideLiveContainer;

@@ -10,6 +10,7 @@
 #import <mach-o/dyld.h>
 #import "../LiveContainer/utils.h"
 #import "../LiveContainer/Tweaks/Tweaks.h"
+#import "../SideStore/XPCServer.h"
 
 @interface LiveProcessHandler : NSObject<NSExtensionRequestHandling>
 @end
@@ -44,6 +45,36 @@ int LiveProcessMain(int argc, char *argv[]) {
     NSUserDefaults *lcUserDefaults = NSUserDefaults.standardUserDefaults;
     [lcUserDefaults setObject:appInfo[@"selected"] forKey:@"selected"];
     [lcUserDefaults setObject:appInfo[@"selectedContainer"] forKey:@"selectedContainer"];
+    
+    
+    if ([appInfo[@"selected"] isEqualToString:@"builtinSideStore"]) {
+        NSData* bookmark = appInfo[@"bookmark"];
+        if(bookmark) {
+            bool isStale = false;
+            NSError* error = nil;
+            NSURL* url = [NSURL URLByResolvingBookmarkData:bookmark options:(1 << 10) relativeToURL:nil bookmarkDataIsStale:&isStale error:&error];
+            bool access = [url startAccessingSecurityScopedResource];
+            if(access) {
+                [lcUserDefaults setObject:url.path forKey:@"specifiedSideStoreContainerPath"];
+            }
+        }
+        NSXPCListenerEndpoint* endpoint = appInfo[@"endpoint"];
+
+        NSXPCConnection* connection = [[NSXPCConnection alloc] initWithListenerEndpoint:endpoint];
+        connection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(RefreshServer)];
+        connection.interruptionHandler = ^{
+            NSLog(@"interrupted!!!");
+        };
+        
+        [connection activate];
+        
+        NSObject<RefreshServer>* proxy = [connection remoteObjectProxy];
+        LiveProcessSideStoreHandler.shared.server = proxy;
+        LiveProcessSideStoreHandler.shared.connection = connection;
+        
+    }
+
+    
     return LiveContainerMain(argc, argv);
 }
 
@@ -69,6 +100,10 @@ static void* hook_dlopen(void* dyldApiInstancePtr, const char* path, int mode) {
 
 // Extension entry point
 int NSExtensionMain(int argc, char * argv[]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+    method_setImplementation(class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:)), (IMP)hook_do_nothing);
+#pragma clang diagnostic pop
     // hook dlopen UIKit
     performHookDyldApi("dlopen", 2, (void**)&orig_dlopen, hook_dlopen);
     // call the real one

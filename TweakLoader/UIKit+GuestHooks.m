@@ -29,7 +29,7 @@ static void UIKitGuestHooksInit() {
             default:
                 break;
         }
-        if(LCOrientationLock != UIInterfaceOrientationUnknown) {
+        if(!NSUserDefaults.isLiveProcess && LCOrientationLock != UIInterfaceOrientationUnknown) {
 //            swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
             swizzle(FBSSceneParameters.class, @selector(initWithXPCDictionary:), @selector(hook_initWithXPCDictionary:));
             swizzle(UIViewController.class, @selector(__supportedInterfaceOrientations), @selector(hook___supportedInterfaceOrientations));
@@ -78,6 +78,7 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId) {
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
+        [NSUserDefaults.lcUserDefaults setBool:NO forKey:@"LCOpenSideStore"];
         [NSClassFromString(@"LCSharedUtils") launchToGuestAppWithURL:url];
         window.windowScene = nil;
     }];
@@ -397,6 +398,11 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 - (void)hook_openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options completionHandler:(void (^)(_Bool))completion {
+    if([url.scheme isEqualToString:@"sidestore"] && NSUserDefaults.isSideStore) {
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
+    
     if(canAppOpenItself(url)) {
         NSData *data = [url.absoluteString dataUsingEncoding:NSUTF8StringEncoding];
         NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
@@ -444,7 +450,7 @@ BOOL canAppOpenItself(NSURL* url) {
     }
 
     // Don't have UIOpenURLAction or is passing a file to app? pass it
-    if (!urlAction || urlAction.url.isFileURL) {
+    if (!urlAction || urlAction.url.isFileURL || ([urlAction.url.scheme isEqualToString:@"sidestore"] && NSUserDefaults.isSideStore)) {
         [self hook_scene:scene didReceiveActions:actions fromTransitionContext:context];
         return;
     }

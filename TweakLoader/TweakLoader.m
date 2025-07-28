@@ -78,7 +78,15 @@ static void TweakLoaderConstructor() {
     }
 
     // Load CydiaSubstrate
-    dlopen("@loader_path/CydiaSubstrate.framework/CydiaSubstrate", RTLD_LAZY | RTLD_GLOBAL);
+    const char *lcMainBundlePath;
+    if(NSUserDefaults.isLiveProcess) {
+        lcMainBundlePath = NSUserDefaults.lcMainBundle.bundlePath.stringByDeletingLastPathComponent.stringByDeletingLastPathComponent.fileSystemRepresentation;
+    } else {
+        lcMainBundlePath = NSUserDefaults.lcMainBundle.bundlePath.fileSystemRepresentation;
+    }
+    char substratePath[PATH_MAX];
+    snprintf(substratePath, sizeof(substratePath), "%s/Frameworks/CydiaSubstrate.framework/CydiaSubstrate", lcMainBundlePath);
+    dlopen(substratePath, RTLD_LAZY | RTLD_GLOBAL);
     const char *substrateError = dlerror();
     if (substrateError) {
         [errors addObject:@(substrateError)];
