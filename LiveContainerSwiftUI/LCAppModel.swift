@@ -46,6 +46,17 @@ class LCAppModel: ObservableObject, Hashable {
         }
     }
     
+    @Published var uiFixFilePickerNew : Bool {
+        didSet {
+            appInfo.fixFilePickerNew = uiFixFilePickerNew
+        }
+    }
+    @Published var uiFixLocalNotification : Bool {
+        didSet {
+            appInfo.fixLocalNotification = uiFixLocalNotification
+        }
+    }
+    
     @Published var uiHideLiveContainer : Bool {
         didSet {
             appInfo.hideLiveContainer = uiHideLiveContainer
@@ -108,6 +119,8 @@ class LCAppModel: ObservableObject, Hashable {
         self.uiDoSymlinkInbox = appInfo.doSymlinkInbox
         self.uiOrientationLock = appInfo.orientationLock
         self.uiUseLCBundleId = appInfo.doUseLCBundleId
+        self.uiFixFilePickerNew = appInfo.fixFilePickerNew
+        self.uiFixLocalNotification = appInfo.fixLocalNotification
         self.uiHideLiveContainer = appInfo.hideLiveContainer
         self.uiDontInjectTweakLoader = appInfo.dontInjectTweakLoader
         self.uiTweakLoaderInjectFailed = appInfo.info()["LCTweakLoaderCantInject"] as? Bool ?? false

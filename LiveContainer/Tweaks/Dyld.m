@@ -7,7 +7,7 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#import "litehook_internal.h"
+#import "../../litehook/src/litehook.h"
 #import "LCMachOUtils.h"
 #import "../utils.h"
 @import Darwin;
