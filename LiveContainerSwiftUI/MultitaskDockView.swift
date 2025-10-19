@@ -629,23 +629,15 @@ class AppInfoProvider {
     
     // Recursively find multitask view
     private func findMultitaskView(in view: UIView, withUUID uuid: String) -> UIView? {
-        for app in apps {
-            if app.appUUID == uuid {
-                return app.view
-            }
-        }
-        
-        return nil
+        apps.first { $0.appUUID == uuid }?.view
     }
     
     // Get view's dataUUID property through reflection
     private func getDataUUID(from view: UIView) -> String? {
         let mirror = Mirror(reflecting: view)
         
-        for child in mirror.children {
-            if child.label == "dataUUID" {
-                return child.value as? String
-            }
+        if let child = (mirror.children.first { $0.label == "dataUUID" })?.value as? String {
+            return child
         }
         
         if view.responds(to: NSSelectorFromString("dataUUID")) {
@@ -820,14 +812,20 @@ public struct MultitaskDockSwiftView: View {
             .padding(.vertical, 15)
             .padding(.horizontal, dynamicPadding)
             .frame(width: dockManager.dockWidth)
-            .background(
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(Color.black.opacity(dockManager.isDockHidden ? 0.3 : 0.7))
-                    .overlay(
+            .modifier { content in
+                if #available(iOS 26.0, *), SharedModel.isLiquidGlassEnabled {
+                    content.glassEffect(.clear, in: .rect(cornerRadius: 15))
+                } else {
+                    content.background(
                         RoundedRectangle(cornerRadius: 15)
-                            .stroke(Color.white.opacity(dockManager.isDockHidden ? 0.1 : 0.3), lineWidth: 1)
+                            .fill(Color.black.opacity(dockManager.isDockHidden ? 0.3 : 0.7))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .stroke(Color.white.opacity(dockManager.isDockHidden ? 0.1 : 0.3), lineWidth: 1)
+                            )
                     )
-            )
+                }
+            }
             .scaleEffect(dockManager.isVisible ? 1.0 : 0.8)
             .opacity(dockManager.isDockHidden ? 0.4 : 1.0)
             .offset(dragOffset)

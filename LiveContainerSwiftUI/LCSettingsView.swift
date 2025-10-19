@@ -354,6 +354,12 @@ struct LCSettingsView: View {
                         } label: {
                             Text("Reset Symbol Offsets")
                         }
+                        Button {
+                            presentFLEXOverlay()
+                        } label: {
+                            Text("Show FLEX Overlay")
+                        }
+                        .disabled(NSClassFromString("FLEXManager") == nil)
                         #if is32BitSupported
                         HStack {
                             Text("LiveExec32 .app path")
@@ -512,6 +518,12 @@ struct LCSettingsView: View {
     
     func resetSymbolOffsets() {
         LCUtils.appGroupUserDefault.removeObject(forKey: "symbolOffsetCache")
+    }
+    
+    func presentFLEXOverlay() {
+        let manager = (NSClassFromString("FLEXManager") as? NSObject.Type)?.perform(NSSelectorFromString("sharedManager"))
+            .takeUnretainedValue() as? NSObject
+        manager?.perform(NSSelectorFromString("showExplorer"))
     }
     
     func importCertificate() async {
