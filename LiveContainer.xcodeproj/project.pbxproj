@@ -252,6 +252,8 @@
 				DecoratedAppSceneViewController.m,
 				LCStatusBarManager.h,
 				LCStatusBarManager.m,
+				MultitaskAppWindow.swift,
+				MultitaskDockView.swift,
 				PiPManager.h,
 				PiPManager.m,
 				ResizeHandleView.h,
