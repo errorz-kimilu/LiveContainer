@@ -46,6 +46,10 @@ extension View {
         self.modifier(DocModifier(isPresented: isPresented, types: types, multiple: multiple, callback: callback, onDismiss: onDismiss))
     }
     
+    func betterContextMenu(menuProvider: @escaping () -> UIMenu) -> some View {
+        self.modifier(UIKitContextMenuModifier(menuProvider: menuProvider))
+    }
+    
     func onBackground(_ f: @escaping () -> Void) -> some View {
         self.onReceive(
             NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification),
@@ -307,4 +311,66 @@ struct ActivityViewController: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: UIViewControllerRepresentableContext<ActivityViewController>) {}
+}
+
+
+private struct UIKitContextMenuModifier : ViewModifier {
+    let menuProvider: () -> UIMenu
+    
+    func body(content: Content) -> some View {
+        UIKitContextMenuContainer(menuProvider: menuProvider, content: content)
+    }
+}
+
+private struct UIKitContextMenuContainer<Content: View>: UIViewControllerRepresentable {
+    let menuProvider: () -> UIMenu
+    let content: Content
+
+    init(menuProvider: @escaping () -> UIMenu,  content: Content) {
+        self.menuProvider = menuProvider
+        self.content = content
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(menuProvider: menuProvider)
+    }
+
+    func makeUIViewController(context: Context) -> UIHostingController<Content> {
+        let controller = UIHostingController(rootView: content)
+        controller.view.backgroundColor = .clear
+        if #available(iOS 16.0, *) {
+            controller.sizingOptions = [.intrinsicContentSize]
+        }
+        controller.view.addInteraction(UIContextMenuInteraction(delegate: context.coordinator))
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIHostingController<Content>, context: Context) {
+        uiViewController.rootView = content
+        context.coordinator.menuProvider = menuProvider
+    }
+
+    @available(iOS 16.0, *)
+    func sizeThatFits(_ proposal: ProposedViewSize, uiViewController: UIHostingController<Content>, context: Context) -> CGSize? {
+        let targetSize = CGSize(
+            width: proposal.width ?? UIView.layoutFittingCompressedSize.width,
+            height: proposal.height ?? UIView.layoutFittingCompressedSize.height
+        )
+
+        return uiViewController.sizeThatFits(in: targetSize)
+    }
+
+    final class Coordinator: NSObject, UIContextMenuInteractionDelegate {
+        var menuProvider: () -> UIMenu
+
+        init(menuProvider: @escaping () -> UIMenu) {
+            self.menuProvider = menuProvider
+        }
+
+        func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+            UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+                self.menuProvider()
+            }
+        }
+    }
 }
