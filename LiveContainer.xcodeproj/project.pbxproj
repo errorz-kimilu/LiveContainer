@@ -254,6 +254,7 @@
 				LCStatusBarManager.m,
 				MultitaskAppWindow.swift,
 				MultitaskDockView.swift,
+				MultitaskManager.swift,
 				PiPManager.h,
 				PiPManager.m,
 				ResizeHandleView.h,
