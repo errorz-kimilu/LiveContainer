@@ -176,6 +176,7 @@ struct LCAppBanner : View {
 
             })
             .clipShape(Capsule())
+            .contentShape(Capsule())
             .disabled(model.isAppRunning)
         }
         .padding()
